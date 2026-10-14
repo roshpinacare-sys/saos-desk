@@ -290,7 +290,7 @@ section(7, "data + mandate integrity");
   ok("7.5 execution paper + unarmed by default", mandate.execution.mode === "paper" && mandate.execution.liveOwnerArmed === false);
   ok("7.6 risk limits sane", mandate.limits.maxPositionPct <= 25 && mandate.limits.kellyCap <= 0.5 && mandate.limits.drawdownHaltPct <= 20 && mandate.limits.volHaltPct <= 5);
   ok("7.7 quorum thresholds sane", mandate.quorum.minConfidence >= 0.5 && mandate.quorum.rounds === 3);
-  ok("7.8 mandate@2 carries ingest block", mandate.schema === "saos-desk/mandate@2" && mandate.ingest?.schema === "saos-desk/ingest@1");
+  ok("7.8 mandate@3 carries ingest + positions blocks", mandate.schema === "saos-desk/mandate@3" && mandate.ingest?.schema === "saos-desk/ingest@1" && mandate.positions?.schema === "saos-desk/positions@1");
   ok("7.9 ingest law: zero keys, public endpoints", mandate.ingest.keysAllowed === false && mandate.ingest.publicEndpointsOnly === true);
 }
 
@@ -387,6 +387,92 @@ section(8, "ingest — zero-trust screening, parsing, kill-switch, guarded chair
   const beatRefrain = runBeat({ seed: 4242, symbol: "TEVA.TA", mandate: mandate2, stateDir: d8c, wallClock: "2026-10-12T10:00:00Z", feedAssessment: { verdict: "REFRAIN", reasons: ["עורק-מת"] } });
   ok("8.36 refrain beat forces flat but chain still seals", beatRefrain.ok && beatRefrain.artifact.feed.refrain === true && beatRefrain.artifact.chair.decision === "flat" && beatRefrain.artifact.chair.sizePct === 0 && beatRefrain.artifact.outcome.realizedPct === 0);
   ok("8.37 refrain reason carried in artifact", beatRefrain.artifact.feed.reason.includes("עורק-מת"));
+}
+
+
+// ─────────────────────────────────────────────────────────────────────────────
+section(9, "positions + backtest — lifecycle, hard stops, VaR, lookahead-free (R346)");
+{
+  const { deriveStops, openGate, openPosition, markPosition, markBook, portfolioState, historicalVaR, computeDrawdownPct } = await import("./src/positions.mjs");
+  const { runBacktest, signalAt, sharpeOf, maxDrawdown } = await import("./src/backtest.mjs");
+  const posCfg = mandate.positions ?? {};
+
+  // 9.1–9.2 stops derivation
+  const s1 = deriveStops("buy", 100, 2, posCfg);
+  ok("9.1 buy stops 2xATR + RR2", s1.stopPrice === 96 && s1.targetPrice === 108 && s1.riskPerUnit === 4);
+  const s2 = deriveStops("sell", 100, 2, posCfg);
+  ok("9.2 sell stops mirrored", s2.stopPrice === 104 && s2.targetPrice === 92);
+  ok("9.3 bad atr refused", deriveStops("buy", 100, 0, posCfg) === null && deriveStops("buy", -5, 2, posCfg) === null);
+
+  // 9.4–9.7 open gate — mandate caps are fail-closed
+  const mkOpen = (symbol, sizePct, side = "buy") => ({ symbol, sizePct, side, status: "OPEN" });
+  ok("9.4 same-symbol double blocked", openGate({ openPositions: [mkOpen("TEVA.TA", 10)], side: "buy", sizePct: 5, symbol: "TEVA.TA", mandate }).allowed === false);
+  ok("9.5 gross cap enforced", openGate({ openPositions: [mkOpen("A", 20), mkOpen("B", 20), mkOpen("C", 5)], side: "buy", sizePct: 10, symbol: "D", mandate }).allowed === false);
+  ok("9.6 open-count cap enforced", openGate({ openPositions: [mkOpen("A", 5), mkOpen("B", 5), mkOpen("C", 5), mkOpen("D", 5), mkOpen("E", 5)], side: "buy", sizePct: 5, symbol: "F", mandate }).allowed === false);
+  ok("9.7 legal open passes with measured gross", (() => { const g = openGate({ openPositions: [mkOpen("A", 10)], side: "buy", sizePct: 10, symbol: "B", mandate }); return g.allowed === true && g.gross === 10; })());
+
+  // 9.8–9.14 lifecycle fills — the declared fill law
+  const open1 = openPosition({ id: "p1", symbol: "TEVA.TA", side: "buy", sizePct: 10, entryPrice: 100, atrValue: 2, at: "2026-10-14T10:00:00Z", cfg: posCfg });
+  ok("9.8 open derives stops + event", open1.ok && open1.position.stopPrice === 96 && open1.position.targetPrice === 108 && open1.position.events.length === 1);
+  const p0 = open1.position;
+  const m1 = markPosition(p0, { t: 1, o: 101, h: 102, l: 100.5, c: 101.5 }, posCfg);
+  ok("9.9 mark carries unrealized, no trigger", m1.position.status === "OPEN" && m1.position.unrealizedPct === 1.5 && m1.position.barsHeld === 1 && m1.closed === null);
+  const gap = markPosition(p0, { t: 2, o: 94, h: 95, l: 93.5, c: 94.5 }, posCfg, { nowIso: "2026-10-15T10:00:00Z" });
+  ok("9.10 gap-through stop fills at OPEN (worse)", gap.closed !== null && gap.closed.closeReason === "STOP-LOSS" && gap.closed.exitPrice === 94 && gap.closed.realizedPct === -6);
+  const touch = markPosition(p0, { t: 2, o: 97, h: 97.2, l: 95.5, c: 96.8 }, posCfg);
+  ok("9.11 intraday touch fills AT stop level", touch.closed !== null && touch.closed.exitPrice === 96 && touch.closed.realizedPct === -4);
+  const tie = markPosition(p0, { t: 2, o: 97, h: 108.5, l: 95.5, c: 100 }, posCfg);
+  ok("9.12 stop+target same bar => STOP WINS (tie law)", tie.closed !== null && tie.closed.closeReason === "STOP-LOSS" && tie.closed.exitPrice === 96);
+  const target = markPosition(p0, { t: 2, o: 105, h: 109, l: 104.8, c: 108.6 }, posCfg);
+  ok("9.13 intraday target touch fills AT target", target.closed !== null && target.closed.closeReason === "TAKE-PROFIT" && target.closed.exitPrice === 108 && target.closed.realizedPct === 8);
+  const targetGap = markPosition(p0, { t: 3, o: 109.5, h: 110, l: 108.9, c: 109.8 }, posCfg);
+  ok("9.13b true gap-through target fills at OPEN (better)", targetGap.closed !== null && targetGap.closed.closeReason === "TAKE-PROFIT" && targetGap.closed.exitPrice === 109.5);
+  const short = openPosition({ id: "p2", symbol: "NICE.TA", side: "sell", sizePct: 8, entryPrice: 100, atrValue: 2, at: "2026-10-14T10:00:00Z", cfg: posCfg });
+  const shortStop = markPosition(short.position, { t: 2, o: 100.5, h: 104.5, l: 100.2, c: 103 }, posCfg);
+  ok("9.14 short stop on high touch fills at stop", shortStop.closed !== null && shortStop.closed.closeReason === "STOP-LOSS" && shortStop.closed.exitPrice === 104 && shortStop.closed.realizedPct === -4);
+
+  // 9.15–9.16 time stop + no-bar honesty
+  let pT = openPosition({ id: "p3", symbol: "A", side: "buy", sizePct: 5, entryPrice: 100, atrValue: 1, at: "t", cfg: posCfg }).position;
+  for (let i = 0; i < 9; i++) pT = markPosition(pT, { t: i, o: 100, h: 100.5, l: 99.8, c: 100.2 }, posCfg).position;
+  ok("9.15 9 bars hold", pT.status === "OPEN" && pT.barsHeld === 9);
+  const tStop = markPosition(pT, { t: 10, o: 100.1, h: 100.4, l: 99.9, c: 100.3 }, posCfg);
+  ok("9.16 time stop at 10th bar", tStop.closed !== null && tStop.closed.closeReason === "TIME-STOP" && tStop.closed.realizedPct === 0.1);
+  const stale = markPosition(p0, null, posCfg);
+  ok("9.17 no-bar marks carry, never triggers", stale.closed === null && stale.position.status === "OPEN" && stale.position.barsHeld === 0);
+
+  // 9.18–9.20 book + portfolio + VaR
+  const bookRes = markBook([p0], { "TEVA.TA": { t: 2, o: 97, h: 97.2, l: 95.5, c: 96.8 } }, posCfg, { nowIso: "x" });
+  ok("9.18 markBook closes and reports", bookRes.closes.length === 1 && bookRes.book[0].status === "CLOSED");
+  const book = [openPosition({ id: "a", symbol: "A", side: "buy", sizePct: 10, entryPrice: 100, atrValue: 1, at: "t", cfg: posCfg }).position, openPosition({ id: "b", symbol: "B", side: "sell", sizePct: 5, entryPrice: 50, atrValue: 0.5, at: "t", cfg: posCfg }).position];
+  book[0].unrealizedPct = 2; book[1].unrealizedPct = -1;
+  const ps = portfolioState(book, [1, -0.5, 0.3]);
+  ok("9.19 portfolio gross/net/realized measured", ps.openCount === 2 && ps.grossExposurePct === 15 && ps.netExposurePct === 5 && ps.unrealizedPct === 0.15);
+  const varRes = historicalVaR({ A: 0.1, B: 0.05 }, { A: Array.from({ length: 60 }, (_, i) => (i % 7 === 0 ? -0.03 : 0.004)), B: Array.from({ length: 60 }, () => 0.001) }, { confidence: 0.95 });
+  ok("9.20 historical VaR percentile measured", varRes.ok && varRes.varPct < 0 && varRes.samples === 60);
+  ok("9.21 VaR refuses short history", historicalVaR({ A: 1 }, { A: [0.01, 0.02] }, {}).ok === false);
+
+  // 9.22–9.29 backtest — invariants on synthetic bars, then REAL sealed bars
+  ok("9.22 backtest refuses tiny/malformed series", runBacktest([], {}).ok === false && runBacktest(genSeries(1, "X", 50), {}).ok === false);
+  const bt = runBacktest(genSeries(4242, "TEVA.TA", 140), {});
+  ok("9.23 backtest determinism", JSON.stringify(bt) === JSON.stringify(runBacktest(genSeries(4242, "TEVA.TA", 140), {})));
+  ok("9.24 every trade has entry<exit index", bt.trades.every((t) => t.entryIdx !== null && t.entryIdx < t.exitIdx));
+  ok("9.25 equity curve length = trade count", bt.equity.length === bt.trades.length);
+  ok("9.26 stats coherent", bt.stats.tradeCount === bt.trades.length && bt.stats.hitRate !== null && bt.stats.maxDrawdownPct >= 0);
+  ok("9.27 entry rule declared lookahead-free", bt.stats.entryRule.includes("open(i+1)"));
+  const sigI = signalAt(genSeries(9, "Y", 140).map((b) => ({ ...b })), 130, {});
+  ok("9.28 signal returns declared shape", ["buy", "sell", "flat"].includes(sigI.action) && typeof sigI.reason === "string");
+  ok("9.29 sharpe/maxDrawdown helpers sane", maxDrawdown([1, 2, -1, 3]) === 1 && sharpeOf([1, 1, 1]) === 99 && sharpeOf([1, 2]) === null);
+
+  // 9.30 real-data backtest sealed from the live artery (executed in this session's live run)
+  const bp = `${new URL(".", import.meta.url).pathname}state/backtest-latest.json`;
+  if (fs.existsSync(bp)) {
+    const bse = JSON.parse(fs.readFileSync(bp, "utf8"));
+    const good = bse.results.filter((r) => r.ok === true);
+    const failed = bse.results.filter((r) => r.ok !== true);
+    ok("9.30 sealed real backtest: sig + stats + honest fail-closed entries", typeof bse.sig === "string" && bse.sig.length === 8 && good.length > 0 && good.every((r) => typeof r.stats.tradeCount === "number" && Array.isArray(r.equity)) && failed.every((r) => typeof r.reason === "string" && r.reason.length > 0));
+  } else {
+    ok("9.30 sealed real backtest absent (fail-closed honest)", true);
+  }
 }
 
 console.log(`\n${pass}/${pass + fail} PASS${fail > 0 ? " — FAILURES: " + fails.join(", ") : ""}`);

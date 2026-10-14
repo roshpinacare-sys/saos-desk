@@ -1,0 +1,314 @@
+{
+  "schema": "saos-desk/backtest@1",
+  "range": "6mo",
+  "ranAt": "2026-10-14T14:29:43.065Z",
+  "results": [
+    {
+      "symbol": "LEUMI.TA",
+      "ok": false,
+      "reason": "http-404"
+    },
+    {
+      "symbol": "FIBI.TA",
+      "ok": true,
+      "bars": 122,
+      "firstBar": 1776149400,
+      "lastBar": 1791960600,
+      "stats": {
+        "tradeCount": 6,
+        "hitRate": 0.5,
+        "avgWinPct": 1.0406,
+        "avgLossPct": -4.8187,
+        "profitFactor": 0.216,
+        "totalReturnPct": -1.1334,
+        "sharpe": -4.0319,
+        "maxDrawdownPct": 5.549,
+        "entryRule": "signal@close(i) → fill@open(i+1) — אפס-הצצה-קדימה",
+        "exitRule": "hard stops (stopAtrMult/rrTarget/timeStopBars) — אותו-מנוע-סיכון כמו-השולחן"
+      },
+      "equity": [
+        -0.5324,
+        -1.0801,
+        -1.0629,
+        -0.9723,
+        -0.7679,
+        -1.1334
+      ]
+    },
+    {
+      "symbol": "POLI.TA",
+      "ok": true,
+      "bars": 122,
+      "firstBar": 1776149400,
+      "lastBar": 1791960600,
+      "stats": {
+        "tradeCount": 5,
+        "hitRate": 0.2,
+        "avgWinPct": 4.1639,
+        "avgLossPct": -3.4594,
+        "profitFactor": 0.3009,
+        "totalReturnPct": -0.9674,
+        "sharpe": -3.9482,
+        "maxDrawdownPct": 3.4502,
+        "entryRule": "signal@close(i) → fill@open(i+1) — אפס-הצצה-קדימה",
+        "exitRule": "hard stops (stopAtrMult/rrTarget/timeStopBars) — אותו-מנוע-סיכון כמו-השולחן"
+      },
+      "equity": [
+        -0.2337,
+        -0.6073,
+        -1.0291,
+        -0.6127,
+        -0.9674
+      ]
+    },
+    {
+      "symbol": "NICE.TA",
+      "ok": true,
+      "bars": 122,
+      "firstBar": 1776149400,
+      "lastBar": 1791960600,
+      "stats": {
+        "tradeCount": 7,
+        "hitRate": 0.5714,
+        "avgWinPct": 7.8346,
+        "avgLossPct": -8.0554,
+        "profitFactor": 1.2968,
+        "totalReturnPct": 0.7172,
+        "sharpe": 0.7693,
+        "maxDrawdownPct": 8.8645,
+        "entryRule": "signal@close(i) → fill@open(i+1) — אפס-הצצה-קדימה",
+        "exitRule": "hard stops (stopAtrMult/rrTarget/timeStopBars) — אותו-מנוע-סיכון כמו-השולחן"
+      },
+      "equity": [
+        -0.7358,
+        -1.5432,
+        -2.4166,
+        -2.4031,
+        -1.5998,
+        -0.166,
+        0.7172
+      ]
+    },
+    {
+      "symbol": "TEVA.TA",
+      "ok": true,
+      "bars": 122,
+      "firstBar": 1776149400,
+      "lastBar": 1791960600,
+      "stats": {
+        "tradeCount": 4,
+        "hitRate": 0.75,
+        "avgWinPct": 8.8661,
+        "avgLossPct": -5.957,
+        "profitFactor": 4.465,
+        "totalReturnPct": 2.0641,
+        "sharpe": 4.7883,
+        "maxDrawdownPct": 0.5957,
+        "entryRule": "signal@close(i) → fill@open(i+1) — אפס-הצצה-קדימה",
+        "exitRule": "hard stops (stopAtrMult/rrTarget/timeStopBars) — אותו-מנוע-סיכון כמו-השולחן"
+      },
+      "equity": [
+        -0.5957,
+        0.0323,
+        1.1109,
+        2.0641
+      ]
+    },
+    {
+      "symbol": "ICL.TA",
+      "ok": true,
+      "bars": 122,
+      "firstBar": 1776149400,
+      "lastBar": 1791960600,
+      "stats": {
+        "tradeCount": 5,
+        "hitRate": 0.2,
+        "avgWinPct": 2.6576,
+        "avgLossPct": -5.7599,
+        "profitFactor": 0.1153,
+        "totalReturnPct": -2.0382,
+        "sharpe": -7.583,
+        "maxDrawdownPct": 5.1655,
+        "entryRule": "signal@close(i) → fill@open(i+1) — אפס-הצצה-קדימה",
+        "exitRule": "hard stops (stopAtrMult/rrTarget/timeStopBars) — אותו-מנוע-סיכון כמו-השולחן"
+      },
+      "equity": [
+        -0.5016,
+        -0.2359,
+        -0.9113,
+        -1.4785,
+        -2.0382
+      ]
+    },
+    {
+      "symbol": "ESLT.TA",
+      "ok": true,
+      "bars": 122,
+      "firstBar": 1776149400,
+      "lastBar": 1791960600,
+      "stats": {
+        "tradeCount": 6,
+        "hitRate": 0.5,
+        "avgWinPct": 3.6828,
+        "avgLossPct": -5.3404,
+        "profitFactor": 0.6896,
+        "totalReturnPct": -0.4973,
+        "sharpe": -1.0377,
+        "maxDrawdownPct": 2.0189,
+        "entryRule": "signal@close(i) → fill@open(i+1) — אפס-הצצה-קדימה",
+        "exitRule": "hard stops (stopAtrMult/rrTarget/timeStopBars) — אותו-מנוע-סיכון כמו-השולחן"
+      },
+      "equity": [
+        0.8038,
+        0.1225,
+        -0.1975,
+        -0.7983,
+        -0.5258,
+        -0.4973
+      ]
+    },
+    {
+      "symbol": "BEZQ.TA",
+      "ok": true,
+      "bars": 122,
+      "firstBar": 1776149400,
+      "lastBar": 1791960600,
+      "stats": {
+        "tradeCount": 4,
+        "hitRate": 0.25,
+        "avgWinPct": 3.1375,
+        "avgLossPct": -3.6621,
+        "profitFactor": 0.2856,
+        "totalReturnPct": -0.7849,
+        "sharpe": -3.9459,
+        "maxDrawdownPct": 2.086,
+        "entryRule": "signal@close(i) → fill@open(i+1) — אפס-הצצה-קדימה",
+        "exitRule": "hard stops (stopAtrMult/rrTarget/timeStopBars) — אותו-מנוע-סיכון כמו-השולחן"
+      },
+      "equity": [
+        -0.2345,
+        -0.6902,
+        -0.3764,
+        -0.7849
+      ]
+    },
+    {
+      "symbol": "MZTF.TA",
+      "ok": true,
+      "bars": 122,
+      "firstBar": 1776149400,
+      "lastBar": 1791960600,
+      "stats": {
+        "tradeCount": 4,
+        "hitRate": 0.5,
+        "avgWinPct": 4.3033,
+        "avgLossPct": -4.4998,
+        "profitFactor": 0.9563,
+        "totalReturnPct": -0.0393,
+        "sharpe": -0.1366,
+        "maxDrawdownPct": 0.5429,
+        "entryRule": "signal@close(i) → fill@open(i+1) — אפס-הצצה-קדימה",
+        "exitRule": "hard stops (stopAtrMult/rrTarget/timeStopBars) — אותו-מנוע-סיכון כמו-השולחן"
+      },
+      "equity": [
+        -0.5011,
+        -0.0418,
+        0.3596,
+        -0.0393
+      ]
+    },
+    {
+      "symbol": "DSEA.TA",
+      "ok": false,
+      "reason": "http-404"
+    },
+    {
+      "symbol": "SPY",
+      "ok": true,
+      "bars": 128,
+      "firstBar": 1776173400,
+      "lastBar": 1791984600,
+      "stats": {
+        "tradeCount": 7,
+        "hitRate": 0.7143,
+        "avgWinPct": 1.8615,
+        "avgLossPct": -1.1131,
+        "profitFactor": 4.1807,
+        "totalReturnPct": 0.7081,
+        "sharpe": 3.64,
+        "maxDrawdownPct": 0,
+        "entryRule": "signal@close(i) → fill@open(i+1) — אפס-הצצה-קדימה",
+        "exitRule": "hard stops (stopAtrMult/rrTarget/timeStopBars) — אותו-מנוע-סיכון כמו-השולחן"
+      },
+      "equity": [
+        0.3169,
+        0.237,
+        0.6315,
+        0.6695,
+        0.5267,
+        0.57,
+        0.7081
+      ]
+    },
+    {
+      "symbol": "QQQ",
+      "ok": true,
+      "bars": 128,
+      "firstBar": 1776173400,
+      "lastBar": 1791984600,
+      "stats": {
+        "tradeCount": 7,
+        "hitRate": 0.5714,
+        "avgWinPct": 1.9545,
+        "avgLossPct": -2.3795,
+        "profitFactor": 1.0952,
+        "totalReturnPct": 0.068,
+        "sharpe": 0.2405,
+        "maxDrawdownPct": 0.8464,
+        "entryRule": "signal@close(i) → fill@open(i+1) — אפס-הצצה-קדימה",
+        "exitRule": "hard stops (stopAtrMult/rrTarget/timeStopBars) — אותו-מנוע-סיכון כמו-השולחן"
+      },
+      "equity": [
+        0.1919,
+        -0.2472,
+        -0.164,
+        -0.1028,
+        -0.3324,
+        0.1131,
+        0.068
+      ]
+    },
+    {
+      "symbol": "BTC-USD",
+      "ok": true,
+      "bars": 184,
+      "firstBar": 1776124800,
+      "lastBar": 1791936000,
+      "stats": {
+        "tradeCount": 10,
+        "hitRate": 0.3,
+        "avgWinPct": 9.2248,
+        "avgLossPct": -2.5983,
+        "profitFactor": 1.5216,
+        "totalReturnPct": 0.9486,
+        "sharpe": 1.1121,
+        "maxDrawdownPct": 0.0329,
+        "entryRule": "signal@close(i) → fill@open(i+1) — אפס-הצצה-קדימה",
+        "exitRule": "hard stops (stopAtrMult/rrTarget/timeStopBars) — אותו-מנוע-סיכון כמו-השולחן"
+      },
+      "equity": [
+        0.8976,
+        0.7038,
+        0.0834,
+        -0.0122,
+        -0.0207,
+        0.7475,
+        0.3909,
+        1.4924,
+        1.0277,
+        0.9486
+      ]
+    }
+  ],
+  "sig": "34fe438f"
+}

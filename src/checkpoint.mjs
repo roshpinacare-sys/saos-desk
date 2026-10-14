@@ -75,3 +75,13 @@ export function resumeCheck(stateDir) {
   if (s.chainHead === actual) return { ok: true, reason: "chain-head-match" };
   return { ok: false, reason: "chain-head-mismatch", stateHead: s.chainHead, ledgerHead: actual };
 }
+
+// CLI: bun src/checkpoint.mjs — verify the chain (npm run verify-ledger)
+const isMain = process.argv[1] && process.argv[1].endsWith("checkpoint.mjs");
+if (isMain) {
+  const stateDir = process.argv[2] ?? new URL("../state", import.meta.url).pathname;
+  const v = verifyLedger(stateDir);
+  const r = resumeCheck(stateDir);
+  console.log(JSON.stringify({ ledger: v, resume: r }, null, 2));
+  process.exit(v.ok && r.ok ? 0 : 1);
+}

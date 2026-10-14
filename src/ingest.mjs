@@ -108,9 +108,10 @@ export function parseChart(json) {
     if (!Number.isFinite(t) || !Number.isFinite(c) || c <= 0) continue; // honest skip of null bars (halts), counted below
     const h = Number.isFinite(q.high?.[i]) ? q.high[i] : c;
     const l = Number.isFinite(q.low?.[i]) ? q.low[i] : c;
+    const o = Number.isFinite(q.open?.[i]) && q.open[i] > 0 ? q.open[i] : c;
     if (h < l) return { ok: false, reason: "bar-high-below-low" }; // structural forgery, fail-closed
     if (bars.length > 0 && t <= bars[bars.length - 1].t) return { ok: false, reason: "timestamps-not-increasing" };
-    bars.push({ t, c: round4(c), h: round4(h), l: round4(l) });
+    bars.push({ t, o: round4(o), c: round4(c), h: round4(h), l: round4(l) });
   }
   if (bars.length < 2) return { ok: false, reason: "usable-bars-below-2" };
   const last = bars[bars.length - 1].c;

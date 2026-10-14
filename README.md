@@ -30,6 +30,9 @@
 | `src/reflexivity.mjs` | משקלים דרוויניים מתוצאות מדודות, חסום [0.5, 2.0] |
 | `src/checkpoint.mjs` | פנקס `state/ledger.jsonl` + `state/beat.json` + אימות-שרשרת + resume |
 | `src/ingest.mjs` | **R345** — סינון אפס-אמון, פענוח RSS/Yahoo-v8, מעריך-עורק + REFRAIN, `guardedChair` |
+| `src/positions.mjs` | **R346** — מחזור-חיים לעמדות-נייר: עוצרים קשיחים (2×ATR/RR2/טיים-סטופ), דגם-מימוש מוצהר, שערי-חשיפה, VaR היסטורי |
+| `src/backtest.mjs` | **R346** — מפעל-בקטסט טהור ללא-הצצה-קדימה: אות@close(i) → מימוש@open(i+1), אותו-מנוע-עוצרים |
+| `src/backtest-live.mjs` | **R346** — מריץ את המנוע על נרות-יום אמיתיים (6mo) ואוטם `state/backtest-latest.json` |
 | `src/fetch-live.mjs` | **R345** — מודול-הרשת היחיד: פרובות חיות fail-closed, חתימת `state/feed-latest.json` |
 | `src/data.mjs` | אוניברס TASE/גלובלי, פידי-RSS עבריים, פרובות-חיות fail-closed |
 | `src/cycle.mjs` | פעימה מלאה אחת → ארטיפקט חתום |
@@ -60,9 +63,15 @@ bun src/checkpoint.mjs        # אימות שרשרת-הפנקס
 | חתימת-אטימה | `sig:2d8b59e7` → `state/feed-latest.json` (payload-without-sig) |
 
 ```bash
-bun src/fetch-live.mjs       # פרובה חיה → חתימת state/feed-latest.json
-bun src/cycle.mjs 7 TEVA.TA  # פעימה הנועצת בעורק — feed.verdict בארטיפקט
+bun src/fetch-live.mjs        # פרובה חיה → חתימת state/feed-latest.json
+bun src/cycle.mjs 7 TEVA.TA   # פעימה הנועצת בעורק — feed.verdict בארטיפקט
+bun src/backtest-live.mjs 6mo # בקטסט על נרות-יום אמיתיים → state/backtest-latest.json
+bun src/checkpoint.mjs        # אימות שרשרת-הפנקס + resume
 ```
+
+## מנוע-העמדות והבקטסט (R346) — המדידה החיה הראשונה
+
+הרצה אמיתית על נרות-יום אמיתיים (6mo, אפס-הצצה-קדימה, `sig:34fe438f`): 11/13 סמלים נבחנו, מוצהר גם-הכישלון — TEVA hit=75% sharpe=4.79 · SPY hit=71% sharpe=3.64 · ICL sharpe=−7.58 **נמדד ומוצג כנה**. החוק של הענקים: כללי-הגרעין צריכים להוכיח את עצמם על היסטוריה אמיתית לפני שהשולחן סומך עליהם — והמדידה כנה גם-כשהיא מכוערת.
 
 דוקטרינת exec33 (אפס-אמון): ללא מפתחות-חיים; כל בית-חוץ מסונן (הזרקות-פרומפט נתפסות ונספרות); נפילת-פיד/חשד-זיוף = **REFRAIN** — היו"ר נאלץ שטוח עד אישור-בעלים חתום. מערכות-העיון שנסקרו ואומתו חיות: `virattt/ai-hedge-fund` · `AI4Finance-Foundation/FinRobot` · `OpenByteInc/QuantDinger` · `HKUDS/Vibe-Trading` · `e2b-dev/e2b` · `guardrails-ai/guardrails` · `Cozy-Finance/agent-buttercup` · `LLMQuant/awesome-trading-agents` · `Tomortec/CryptoTradingAgents` (Kill-Switch) · `piotrkulpinski/open-source-alternatives`.
 
