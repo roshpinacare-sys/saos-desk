@@ -183,6 +183,90 @@ export function simOutcome(snap: Snapshot, decision: Decision | AgentAction, siz
   return { realizedPct: round4(movePct * dir * frac), simClosed: true };
 }
 
+// ---- real-bars input (R353) ---------------------------------------------------
+// Faithful port of repos/saos-desk/src/kernel.mjs (source of truth).
+// The kernel DECIDES ON MEASURED BARS; genSeries/snapshot() are selftest fixtures
+// only (law #14). Fail-closed: any structural violation THROWS — never repaired,
+// never synthesized. Same bars -> same beat (determinism preserved).
+
+export function validateBars(bars: unknown, opts: { minBars?: number } = {}): true {
+  const minBars = opts.minBars ?? 1;
+  if (!Array.isArray(bars)) throw new Error("bars-not-array");
+  if (bars.length < minBars) throw new Error(`bars-too-few:${bars.length}`);
+  for (let i = 0; i < bars.length; i++) {
+    const b = bars[i] as Partial<Bar> | null | undefined;
+    if (!b || typeof b !== "object" || Array.isArray(b)) throw new Error(`bar-${i}-not-object`);
+    for (const k of ["o", "h", "l", "c"] as const) {
+      const v = b[k];
+      if (typeof v !== "number" || !Number.isFinite(v) || v <= 0) {
+        throw new Error(`bar-${i}-${k}-not-positive-finite`);
+      }
+    }
+    if ((b.h as number) < (b.l as number)) throw new Error(`bar-${i}-high-below-low`);
+    if ((b.h as number) < (b.o as number) || (b.h as number) < (b.c as number) || (b.l as number) > (b.o as number) || (b.l as number) > (b.c as number)) {
+      throw new Error(`bar-${i}-ohlc-inconsistent`);
+    }
+  }
+  return true;
+}
+
+// Indicator block kept in lockstep with snapshot() — the engine repo's selftest
+// proves bit-identity between the two paths (vector 11.1); keep this port identical.
+export function snapshotFromBars(symbol: string, klass: string, bars: Bar[], opts: { used?: number; forwardMax?: number } = {}): Snapshot {
+  const used = opts.used ?? 120;
+  const forwardMax = opts.forwardMax ?? 5;
+  validateBars(bars, { minBars: used });
+  const window = bars.slice(-(used + forwardMax));
+  const seen = window.slice(0, used);
+  const forward = window.slice(used); // REAL next-bars (0..forwardMax) — agents never see them
+  const closes = seen.map((b) => b.c);
+  const price = closes[closes.length - 1];
+  const a = atr(seen, 14) ?? price * 0.01;
+  const s20 = sma(closes, 20) ?? price;
+  const s50 = sma(closes, 50) ?? price;
+  const trendScore = clamp(Math.tanh((s20 - s50) / s50 / 0.02), -1, 1);
+  const volPct = (a / price) * 100;
+  const regime: Regime =
+    Math.abs(trendScore) > 0.45
+      ? trendScore > 0 ? "trend-up" : "trend-down"
+      : volPct > 2.0 ? "choppy-highvol" : "choppy-lowvol";
+  return {
+    seed: null, // no seed: the market generated these bars, not a PRNG
+    symbol, klass,
+    bars: seen,
+    price: round4(price),
+    atr14: round4(a),
+    rsi14: round4(rsi(closes, 14) ?? 50),
+    sma20: round4(s20),
+    sma50: round4(s50),
+    trendScore: round4(trendScore),
+    volPct: round4(volPct),
+    regime,
+    source: "live-bars",
+    _forward: forward,
+  };
+}
+
+// Measured outcome on REAL next-bars (R353). No forward bar yet = pending:
+// honest zeros everywhere — evolve() yields factor 1 (weights untouched).
+export function realOutcome(snap: Snapshot, decision: Decision | AgentAction, sizePct: number): Outcome {
+  const f = Array.isArray(snap._forward) ? snap._forward : [];
+  if (f.length === 0) {
+    return { realizedPct: 0, simClosed: false, pending: true, outcomeSource: "awaiting-next-real-bar" };
+  }
+  const entry = snap.price;
+  const exit = f[f.length - 1].c;
+  const movePct = ((exit - entry) / entry) * 100;
+  const dir = decision === "buy" ? 1 : decision === "sell" ? -1 : 0;
+  const frac = sizePct / 100;
+  return {
+    realizedPct: round4(movePct * dir * frac),
+    simClosed: false,
+    pending: false,
+    outcomeSource: "measured-next-bar",
+  };
+}
+
 // ---- canonical signature (8 hex of sha256 over canonical JSON) ---------------
 // Contract: payload WITHOUT the signature field (T-88 law).
 export function canonical(obj: unknown): string {
@@ -444,14 +528,23 @@ export interface PureBeatInput {
   equity: number[];
   prevSig: string;
   wallClock: string | null;
+  /** R353: when present, the kernel decides on these MEASURED bars (law #14) */
+  realBars?: Bar[] | null;
 }
 
 export function runBeatPure(input: PureBeatInput): { entry: DeskArtifact; evolvedWeights: Weights } {
-  const { seed, symbol, klass, mandate, beat, weights, equity, prevSig, wallClock } = input;
-  const snap = snapshot(seed, symbol, klass);
+  const { seed, symbol, klass, mandate, beat, weights, equity, prevSig, wallClock, realBars } = input;
+  const snap = realBars
+    ? snapshotFromBars(symbol, klass, realBars, {
+        used: mandate.marketData?.decisionBars ?? 120,
+        forwardMax: mandate.marketData?.forwardMax ?? 5,
+      })
+    : snapshot(seed, symbol, klass);
   const verdicts = cabinet(snap, mandate, weights);
   const board = runBoardroom(snap, mandate, verdicts, { equity });
-  const outcome = simOutcome(snap, board.chair.decision, board.chair.sizePct);
+  const outcome = realBars
+    ? realOutcome(snap, board.chair.decision, board.chair.sizePct)
+    : simOutcome(snap, board.chair.decision, board.chair.sizePct);
   const evolved = evolve(weights, board.agents, board.chair.decision, board.chair.sizePct, outcome.realizedPct);
 
   const artifact: DeskArtifact = {
@@ -467,7 +560,7 @@ export function runBeatPure(input: PureBeatInput): { entry: DeskArtifact; evolve
       volPct: snap.volPct, source: snap.source,
       bars: snap.bars.map((b) => [b.o, b.h, b.l, b.c]),
     },
-    dataMode: "sim",
+    dataMode: realBars ? "live-bars" : "sim",
     agents: board.agents,
     debate: board.debate,
     chair: board.chair,

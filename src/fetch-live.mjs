@@ -41,11 +41,11 @@ export async function fetchText(url, { timeoutMs = 8000, maxBytes = 262144 } = {
   }
 }
 
-export async function fetchChart(symbol, { hosts, timeoutMs, maxBytes } = {}) {
+export async function fetchChart(symbol, { hosts, timeoutMs, maxBytes, range = "1mo" } = {}) {
   const hs = hosts ?? ["https://query1.finance.yahoo.com", "https://query2.finance.yahoo.com"];
   let lastErr = { ok: false, reason: "no-hosts" };
   for (const host of hs) {
-    const url = `${host}/v8/finance/chart/${encodeURIComponent(symbol)}?range=1mo&interval=1d`;
+    const url = `${host}/v8/finance/chart/${encodeURIComponent(symbol)}?range=${encodeURIComponent(range)}&interval=1d`;
     const r = await fetchText(url, { timeoutMs, maxBytes });
     if (!r.ok) { lastErr = { symbol, ok: false, reason: r.reason }; continue; }
     const parsed = parseChart(r.body);

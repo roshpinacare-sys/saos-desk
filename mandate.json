@@ -1,5 +1,5 @@
 {
-  "schema": "saos-desk/mandate@3",
+  "schema": "saos-desk/mandate@4",
   "execution": {
     "mode": "paper",
     "liveOwnerArmed": false
@@ -32,6 +32,15 @@
   "universe": {
     "tase": ["LEUMI.TA", "FIBI.TA", "POLI.TA", "NICE.TA", "TEVA.TA", "ICL.TA", "ESLT.TA", "BEZQ.TA", "MZTF.TA", "DSEA.TA"],
     "global": ["SPY", "QQQ", "BTC-USD"]
+  },
+  "marketData": {
+    "schema": "saos-desk/market-data@1",
+    "realBarsRequired": true,
+    "decisionBars": 120,
+    "forwardMax": 5,
+    "minBars": 121,
+    "barRange": "6mo",
+    "law": "R353: the kernel decides on measured bars; sim = selftest fixture only; pending outcome = honest zeros"
   },
   "ingest": {
     "schema": "saos-desk/ingest@1",

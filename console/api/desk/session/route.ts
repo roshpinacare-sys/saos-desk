@@ -3,15 +3,18 @@ import { Prisma } from "@prisma/client";
 import { db } from "@/lib/db";
 import { MANDATE, symbolClass } from "@/lib/desk/mandate";
 import { AGENT_IDS, deriveSeed, runBeatPure, seedWeights } from "@/lib/desk/engine";
-import type { Weights } from "@/lib/desk/types";
+import { fetchBars } from "@/lib/desk/fetchers";
+import type { Bar, Weights } from "@/lib/desk/types";
 
 export const dynamic = "force-dynamic";
 
 // In-process mutex: one beat at a time, so beat numbers and the sig chain stay honest.
 let beatQueue: Promise<unknown> = Promise.resolve();
 
-// POST /api/desk/session — run ONE full desk beat: snapshot -> cabinet -> boardroom
-// -> sim outcome -> reflexivity -> persist DeskBeat + evolve DeskWeight.
+// POST /api/desk/session — run ONE full desk beat: REAL bars (R353 law #14) ->
+// snapshot -> cabinet -> boardroom -> measured outcome -> reflexivity -> persist.
+// Fail-closed: no real bars (dead feed / too few) = NO-REAL-BARS honest refusal —
+// a symbol without measured data NEVER gets a decision (no synthesized numbers).
 export async function POST(req: Request) {
   let body: { symbol?: string };
   try {
@@ -64,6 +67,20 @@ async function runOneBeat(symbol: string, klass: "tase" | "global") {
     const equity = priorBeats.map((b) => b.realizedPct);
     const prevSig = priorBeats.length > 0 ? priorBeats[priorBeats.length - 1].sig : "GENESIS";
 
+    // R353: fetch REAL daily bars FIRST — the decision input is measured, not generated
+    const md = MANDATE.marketData;
+    const chart = await fetchBars(symbol, md.barRange);
+    if (!chart.ok || !Array.isArray(chart.bars) || chart.bars.length < md.minBars) {
+      const why = chart.ok
+        ? `נרות-אמת לא מספיקים (${chart.bars?.length ?? 0} < ${md.minBars})`
+        : (chart.reason ?? "fetch-failed");
+      return NextResponse.json(
+        { ok: false, error: "no-real-bars", message: `אין נרות-אמת לסמל ${symbol} — ההכרעה נמנעת (fail-closed). סיבה: ${why}. סמל בלי דאטה מדוד לא מקבל הכרעה.` },
+        { status: 409 }
+      );
+    }
+    const realBars: Bar[] = chart.bars.map((b) => ({ o: b.o, h: b.h, l: b.l, c: b.c, v: 0 }));
+
     const { entry, evolvedWeights } = runBeatPure({
       seed,
       symbol,
@@ -74,6 +91,7 @@ async function runOneBeat(symbol: string, klass: "tase" | "global") {
       equity,
       prevSig,
       wallClock: new Date().toISOString(),
+      realBars,
     });
 
     await db.deskBeat.create({

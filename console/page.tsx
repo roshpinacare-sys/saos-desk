@@ -379,10 +379,14 @@ function Panel({
   )
 }
 
-function SimTag() {
+function ModeTag({ mode = 'sim' }: { mode?: string }) {
+  const live = mode === 'live-bars'
   return (
-    <span className="rounded border border-neutral-700 px-1.5 py-0.5 text-[10px] leading-none text-neutral-400">
-      סימולציה
+    <span
+      className={`rounded border px-1.5 py-0.5 text-[10px] leading-none ${live ? 'border-emerald-800 text-emerald-400' : 'border-neutral-700 text-neutral-400'}`}
+      aria-label={live ? 'ההכרעה חושבה על נרות-שוק אמתיים מהעורק' : 'ההכרעה חושבה על סדרת-סימולציה (פיקס-בדיקות בלבד)'}
+    >
+      {live ? 'נרות-אמת' : 'סימולציה'}
     </span>
   )
 }
@@ -1418,7 +1422,11 @@ export default function DeskPage() {
                 </div>
                 {view?.outcome && (
                   <p className="text-sm text-neutral-400">
-                    תוצאה מדודה (סימולציה):{' '}
+                    {view.outcome.pending
+                      ? 'תוצאה ממתינה לנר-האמת הבא (אפסים כנים — אין אות-למידה מזויף): '
+                      : view.outcome.outcomeSource === 'measured-next-bar'
+                        ? 'תוצאה נמדדה על נר-האמת הבא בפועל: '
+                        : 'תוצאה מדודה (פיקס-סימולציה היסטורי): '}
                     <Num v={pctStr(view.outcome.realizedPct)} className={`font-bold ${pnlClass(view.outcome.realizedPct)}`} />
                   </p>
                 )}
@@ -1505,7 +1513,7 @@ export default function DeskPage() {
                 <div>
                   <div className="mb-1 flex items-center gap-2">
                     <p className="text-[11px] text-neutral-500">120 הסגירות האחרונות</p>
-                    <SimTag />
+                    <ModeTag mode={view.market?.source} />
                   </div>
                   <Sparkline closes={view.closes} stroke="#f59e0b" label="גרף קו של 120 הסגירות האחרונות" />
                 </div>
@@ -1518,7 +1526,7 @@ export default function DeskPage() {
           <Panel
             title="עקומת-הון"
             icon={<LineChart className="h-4 w-4 text-emerald-500" aria-hidden />}
-            tag={<span className="rounded border border-neutral-700 px-1.5 py-0.5 text-[10px] leading-none text-neutral-400">עקומת-הון (סימולציה)</span>}
+            tag={<span className="rounded border border-neutral-700 px-1.5 py-0.5 text-[10px] leading-none text-neutral-400">עקומת-הון (מדוד + היסטוריית-פיקס)</span>}
           >
             {status && status.equity.length > 0 ? (
               <div className="space-y-2">
@@ -1568,7 +1576,7 @@ export default function DeskPage() {
                     <TableHead className="text-neutral-400">סימל</TableHead>
                     <TableHead className="text-neutral-400">החלטה</TableHead>
                     <TableHead className="text-neutral-400">גודל</TableHead>
-                    <TableHead className="text-neutral-400">תוצאה (סימולציה)</TableHead>
+                    <TableHead className="text-neutral-400">תוצאה</TableHead>
                     <TableHead className="text-neutral-400">חתימה</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -1579,7 +1587,13 @@ export default function DeskPage() {
                       <TableCell><Num v={row.symbol} className="text-neutral-200" /></TableCell>
                       <TableCell><ActionBadge action={row.decision} /></TableCell>
                       <TableCell><Num v={`${row.sizePct}%`} className="text-neutral-300" /></TableCell>
-                      <TableCell><Num v={pctStr(row.realizedPct)} className={`font-bold ${pnlClass(row.realizedPct)}`} /></TableCell>
+                      <TableCell>
+                        {row.outcome?.pending ? (
+                          <span className="rounded border border-neutral-700 px-1.5 py-0.5 text-[10px] leading-none text-neutral-400">ממתין לנר-אמת</span>
+                        ) : (
+                          <Num v={pctStr(row.realizedPct)} className={`font-bold ${pnlClass(row.realizedPct)}`} />
+                        )}
+                      </TableCell>
                       <TableCell><Num v={`sig:${row.sig}`} className="text-[11px] text-neutral-500" /></TableCell>
                     </TableRow>
                   ))}
@@ -1647,7 +1661,7 @@ export default function DeskPage() {
           >
             github.com/roshpinacare-sys/saos-desk
           </a>{' '}
-          · R345 עורק-הנתונים: אפס מפתחות, סינון אפס-אמון, REFRAIN fail-closed · R346 מנוע-עמדות: עוצרים קשיחים, בקטסט ללא-הצצה · מדוד-מול-מוערך: נתוני-המנוע כאן = סימולציה מתויגת כנה, טבלאות-העורק/העמדות/הבקטסט = נתונים חיים מדודים
+          · R345 עורק-הנתונים: אפס מפתחות, סינון אפס-אמון, REFRAIN fail-closed · R346 מנוע-עמדות: עוצרים קשיחים, בקטסט ללא-הצצה · R353 קרנל-על-נרות-אמת: ההכרעה חושבת על נרות-יום מדודים מהעורק, תוצאה נמדדת על נר-האמת הבא, סמל בלי דאטה-אמת = סירוב כן · מדוד-מול-מוערך: היסטוריית-המושבים הישנה = פיקס-סימולציה מתויג, החדשה = נמדד
         </div>
       </footer>
     </div>

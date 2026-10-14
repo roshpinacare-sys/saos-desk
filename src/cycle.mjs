@@ -1,9 +1,11 @@
-// saos-desk cycle — one desk beat end-to-end (R338, R345 adds the feed gate)
-// beat = snapshot -> cabinet -> boardroom -> [feed gate R345] -> outcome(sim) -> reflexivity -> checkpoint
+// saos-desk cycle — one desk beat end-to-end (R338, R345 feed gate, R353 real-bars input)
+// beat = snapshot -> cabinet -> boardroom -> [feed gate R345] -> outcome(measured|sim) -> reflexivity -> checkpoint
 // Paper-only by mandate; live execution is owner-gated and ABSENT (zero keys).
 // R345: a REFRAIN feed verdict forces the chair flat — observation-only, fail-closed.
+// R353: realBars present -> the kernel decides on MEASURED bars (law #14); the sim
+// path survives for selftest fixtures only. Pending outcome = honest zeros, never fabricated.
 import fs from "node:fs";
-import { snapshot, simOutcome } from "./kernel.mjs";
+import { snapshot, simOutcome, snapshotFromBars, realOutcome } from "./kernel.mjs";
 import { cabinet } from "./agents.mjs";
 import { runBoardroom } from "./boardroom.mjs";
 import { guardedChair } from "./ingest.mjs";
@@ -19,7 +21,7 @@ export function seedWeights() {
   return w;
 }
 
-export function runBeat({ seed, symbol, klass = "tase", mandate, stateDir, snapFn = null, wallClock = null, feedAssessment = null }) {
+export function runBeat({ seed, symbol, klass = "tase", mandate, stateDir, snapFn = null, wallClock = null, feedAssessment = null, realBars = null }) {
   const resume = resumeCheck(stateDir);
   if (!resume.ok) {
     return { ok: false, error: "RESUME-CHECK-FAILED", resume };
@@ -27,14 +29,23 @@ export function runBeat({ seed, symbol, klass = "tase", mandate, stateDir, snapF
   const state = loadState(stateDir, seedWeights());
   let snap;
   try {
-    snap = snapFn ? snapFn(seed, symbol) : snapshot(seed, symbol, klass);
+    snap = snapFn
+      ? snapFn(seed, symbol)
+      : realBars
+        ? snapshotFromBars(symbol, klass, realBars, {
+            used: mandate.marketData?.decisionBars ?? 120,
+            forwardMax: mandate.marketData?.forwardMax ?? 5,
+          })
+        : snapshot(seed, symbol, klass);
   } catch (e) {
     return { ok: false, error: "SNAPSHOT-FAILED", reason: String(e?.message ?? e) };
   }
   const verdicts = cabinet(snap, mandate, state.weights);
   const board0 = runBoardroom(snap, mandate, verdicts, state);
   const board = guardedChair(board0, feedAssessment);
-  const outcome = simOutcome(snap, board.chair.decision, board.chair.sizePct);
+  const outcome = (realBars && !snapFn)
+    ? realOutcome(snap, board.chair.decision, board.chair.sizePct)
+    : simOutcome(snap, board.chair.decision, board.chair.sizePct);
   const evolved = evolve(state.weights, board.agents, board.chair.decision, board.chair.sizePct, outcome.realizedPct);
 
   const artifact = {
@@ -50,7 +61,7 @@ export function runBeat({ seed, symbol, klass = "tase", mandate, stateDir, snapF
       volPct: snap.volPct, source: snap.source,
       bars: snap.bars.map((b) => [b.o, b.h, b.l, b.c]),
     },
-    dataMode: snapFn ? "live-probe" : "sim",
+    dataMode: snapFn ? "live-probe" : realBars ? "live-bars" : "sim",
     feed: {
       verdict: feedAssessment?.verdict ?? "UNPROBED",
       refrain: board.refrain === true,

@@ -4,7 +4,7 @@
 import type { AgentId, Mandate } from "./types";
 
 export const MANDATE: Mandate = {
-  schema: "saos-desk/mandate@3",
+  schema: "saos-desk/mandate@4",
   execution: {
     mode: "paper",
     liveOwnerArmed: false,
@@ -43,6 +43,15 @@ export const MANDATE: Mandate = {
     { name: "Globes", url: "https://www.globes.co.il/webservice/rss/rss_feeds_rss20.xml?fid=1042" },
     { name: "TheMarker", url: "https://www.themarker.com/cserver/rss/allnews" },
   ],
+  marketData: {
+    schema: "saos-desk/market-data@1",
+    realBarsRequired: true,
+    decisionBars: 120,
+    forwardMax: 5,
+    minBars: 121,
+    barRange: "6mo",
+    law: "R353: the kernel decides on measured bars; sim = selftest fixture only; pending outcome = honest zeros",
+  },
   ingest: {
     schema: "saos-desk/ingest@1",
     publicEndpointsOnly: true,

@@ -2,7 +2,7 @@
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { mulberry32, hash32, genSeries, sma, ema, rsi, atr, bollinger, macd, snapshot, simOutcome, canonical, sig8 } from "./src/kernel.mjs";
+import { mulberry32, hash32, genSeries, sma, ema, rsi, atr, bollinger, macd, snapshot, simOutcome, snapshotFromBars, validateBars, realOutcome, canonical, sig8 } from "./src/kernel.mjs";
 import { AGENTS, cabinet, verdict } from "./src/agents.mjs";
 import { weightedMajority, debate, runBoardroom, riskGate, computeDrawdown } from "./src/boardroom.mjs";
 import { evolve } from "./src/reflexivity.mjs";
@@ -291,7 +291,7 @@ section(7, "data + mandate integrity");
   ok("7.5 execution paper + unarmed by default", mandate.execution.mode === "paper" && mandate.execution.liveOwnerArmed === false);
   ok("7.6 risk limits sane", mandate.limits.maxPositionPct <= 25 && mandate.limits.kellyCap <= 0.5 && mandate.limits.drawdownHaltPct <= 20 && mandate.limits.volHaltPct <= 5);
   ok("7.7 quorum thresholds sane", mandate.quorum.minConfidence >= 0.5 && mandate.quorum.rounds === 3);
-  ok("7.8 mandate@3 carries ingest + positions blocks", mandate.schema === "saos-desk/mandate@3" && mandate.ingest?.schema === "saos-desk/ingest@1" && mandate.positions?.schema === "saos-desk/positions@1");
+  ok("7.8 mandate@4 carries ingest + positions + marketData blocks", mandate.schema === "saos-desk/mandate@4" && mandate.ingest?.schema === "saos-desk/ingest@1" && mandate.positions?.schema === "saos-desk/positions@1" && mandate.marketData?.schema === "saos-desk/market-data@1" && mandate.marketData?.realBarsRequired === true);
   ok("7.9 ingest law: zero keys, public endpoints", mandate.ingest.keysAllowed === false && mandate.ingest.publicEndpointsOnly === true);
 }
 
@@ -532,6 +532,89 @@ section(9, "positions + backtest — lifecycle, hard stops, VaR, lookahead-free 
     const flowLock = eventToLedgerRecords(openPos, { seq: 1, prevSig: dep.record.sig });
     const flowSettle = eventToLedgerRecords(closedPos, { seq: 2, prevSig: flowLock.records[0].sig });
     ok("10.23 lifecycle flow chains correctly", flowLock.ok && flowSettle.ok && verifyLedgerChain([dep.record, flowLock.records[0], flowSettle.records[0]]).brokenAt === null);
+  }
+
+  // ───────────────────────────────────────────────────────────────────────────
+  section(11, "real-bars kernel input — measured decisions, pending honesty, fail-closed (R353)");
+  {
+    // 11.1 lockstep proof: snapshotFromBars on genSeries output is bit-identical
+    // to snapshot()'s indicator fields on the same seen-bars (no math drift ever).
+    const simBars = genSeries(4242, "TEVA.TA", 125);
+    const a = snapshot(4242, "TEVA.TA", "tase", 120, 5);
+    const b = snapshotFromBars("TEVA.TA", "tase", simBars, { used: 120, forwardMax: 5 });
+    const fields = ["price", "atr14", "rsi14", "sma20", "sma50", "trendScore", "volPct", "regime"];
+    ok("11.1 lockstep: real-bars path bit-identical to sim path on same seen-bars", fields.every((f) => JSON.stringify(a[f]) === JSON.stringify(b[f])) && b.source === "live-bars" && a.source === "sim");
+
+    // 11.2 windowing: last (used+forwardMax) bars; seen = first `used`; forward = real tail
+    const bars130 = genSeries(7, "NICE.TA", 130);
+    const s130 = snapshotFromBars("NICE.TA", "tase", bars130, { used: 120, forwardMax: 5 });
+    ok("11.2 windowing exact", s130.bars.length === 120 && s130._forward.length === 5 && JSON.stringify(s130._forward.map((x) => x.c)) === JSON.stringify(bars130.slice(125).map((x) => x.c)) && JSON.stringify(s130.bars[119]) === JSON.stringify(bars130[124]));
+
+    // 11.3 validateBars fail-closed — structural rejections with precise reasons, never repaired
+    const rejects = [
+      ["bars-not-array", () => validateBars("nope")],
+      ["bars-too-few", () => validateBars([{ o: 1, h: 1, l: 1, c: 1 }], { minBars: 2 })],
+      ["high-below-low", () => validateBars([{ o: 10, h: 9, l: 11, c: 10 }])],
+      ["not-positive-finite", () => validateBars([{ o: 0, h: 10, l: 9, c: 10 }])],
+      ["not-positive-finite", () => validateBars([{ o: 10, h: Infinity, l: 9, c: 10 }])],
+      ["ohlc-inconsistent", () => validateBars([{ o: 11, h: 10, l: 9, c: 10 }])],
+      ["not-object", () => validateBars([42])],
+    ];
+    ok("11.3 fail-closed rejections with precise reasons", rejects.every(([expected, fn]) => { try { fn(); return false; } catch (e) { return String(e.message).includes(expected); } }));
+
+    // 11.4 realOutcome measured on the real next-bar close, direction + fraction exact
+    const snapM = { price: 100, _forward: [{ o: 101, h: 103, l: 100, c: 102 }] };
+    const m = realOutcome(snapM, "buy", 10);
+    ok("11.4 measured outcome exact (10% position × 2% move = 0.2% portfolio)", m.pending === false && m.outcomeSource === "measured-next-bar" && m.realizedPct === 0.2 && m.simClosed === false);
+    const mSell = realOutcome(snapM, "sell", 10);
+    ok("11.5 short side measured negative", mSell.realizedPct === -0.2);
+    const mFlat = realOutcome(snapM, "flat", 0);
+    ok("11.6 flat measures zero", mFlat.realizedPct === 0);
+
+    // 11.7 pending: no forward bar -> honest zeros, never a fabricated number
+    const p = realOutcome({ price: 100, _forward: [] }, "buy", 10);
+    ok("11.7 pending honest", p.pending === true && p.realizedPct === 0 && p.outcomeSource === "awaiting-next-real-bar");
+
+    // 11.8 pending -> evolve() yields factor 1 everywhere: weights + wins/losses untouched
+    const w0 = { technical: { weight: 1.2, wins: 3, losses: 1 }, risk: { weight: 0.8, wins: 0, losses: 2 } };
+    const agentsFake = [
+      { agentId: "technical", action: "buy" },
+      { agentId: "risk", action: "sell" },
+    ];
+    const ev = evolve(w0, agentsFake, "buy", 10, p.realizedPct);
+    ok("11.8 pending yields honest-zero evolution", JSON.stringify(ev.weights) === JSON.stringify(w0) && ev.perAgent.every((x) => x.pnl === 0 && x.factor === 1));
+
+    // 11.9 determinism: same bars -> bit-identical snapshot (no clock, no rng)
+    const d1 = snapshotFromBars("BEZQ.TA", "tase", simBars, { used: 120, forwardMax: 5 });
+    const d2 = snapshotFromBars("BEZQ.TA", "tase", simBars, { used: 120, forwardMax: 5 });
+    ok("11.9 bit-identical determinism", JSON.stringify(d1) === JSON.stringify(d2));
+
+    // 11.10 full beat on realBars (tmp state): dataMode live-bars + measured outcome + chain sig
+    const st1 = tmpdir("realbars-a");
+    const mdCfg = mandate.marketData ?? { used: 120, forwardMax: 5 };
+    const rb = runBeat({ seed: 123456, symbol: "SPY", klass: "global", mandate, stateDir: st1, wallClock: null, realBars: simBars });
+    ok("11.10 runBeat realBars live-bars", rb.ok && rb.artifact.dataMode === "live-bars" && rb.artifact.market.source === "live-bars" && rb.artifact.outcome.pending === false && rb.artifact.outcome.outcomeSource === "measured-next-bar");
+
+    // 11.11 malformed realBars -> SNAPSHOT-FAILED fail-closed (never a decision)
+    const st2 = tmpdir("realbars-b");
+    const bad = runBeat({ seed: 123456, symbol: "SPY", klass: "global", mandate, stateDir: st2, wallClock: null, realBars: [{ o: 10, h: 5, l: 11, c: 10 }] });
+    ok("11.11 malformed bars fail-closed", bad.ok === false && bad.error === "SNAPSHOT-FAILED");
+
+    // 11.12 insufficient bars -> SNAPSHOT-FAILED (minBars = used)
+    const st3 = tmpdir("realbars-c");
+    const short = runBeat({ seed: 123456, symbol: "SPY", klass: "global", mandate, stateDir: st3, wallClock: null, realBars: genSeries(1, "SPY", 90) });
+    ok("11.12 insufficient bars refused", short.ok === false && short.error === "SNAPSHOT-FAILED" && String(short.reason).startsWith("bars-too-few"));
+
+    // 11.13 pending beat: forward-less bars -> pending outcome, weights bit-identical
+    const st4 = tmpdir("realbars-d");
+    const noForward = genSeries(2, "SPY", 120);
+    const pend = runBeat({ seed: 123456, symbol: "SPY", klass: "global", mandate, stateDir: st4, wallClock: null, realBars: noForward });
+    ok("11.13 pending beat honest zeros", pend.ok && pend.artifact.outcome.pending === true && pend.artifact.outcome.realizedPct === 0 && JSON.stringify(pend.state.weights) === JSON.stringify({ technical: { weight: 1, wins: 0, losses: 0 }, valuation: { weight: 1, wins: 0, losses: 0 }, momentum: { weight: 1, wins: 0, losses: 0 }, sentiment: { weight: 1, wins: 0, losses: 0 }, risk: { weight: 1, wins: 0, losses: 0 } }));
+
+    // 11.14 no realBars -> legacy sim path untouched (fixture-only law, backward compat)
+    const st5 = tmpdir("realbars-e");
+    const simBeat = runBeat({ seed: 555, symbol: "SPY", klass: "global", mandate, stateDir: st5, wallClock: null });
+    ok("11.14 sim fixture path unchanged", simBeat.ok && simBeat.artifact.dataMode === "sim" && simBeat.artifact.market.source === "sim" && simBeat.artifact.outcome.simClosed === true);
   }
 
 console.log(`\n${pass}/${pass + fail} PASS${fail > 0 ? " — FAILURES: " + fails.join(", ") : ""}`);

@@ -20,7 +20,8 @@ export interface Bar {
 }
 
 export interface Snapshot {
-  seed: number;
+  /** sim path: the PRNG seed; live-bars path (R353): null — the market generated these bars */
+  seed: number | null;
   symbol: string;
   klass: string;
   bars: Bar[];
@@ -32,8 +33,8 @@ export interface Snapshot {
   trendScore: number;
   volPct: number;
   regime: Regime;
-  source: "sim";
-  /** sim close-out window (used ONLY by simOutcome — agents never see it) */
+  source: "sim" | "live-bars";
+  /** close-out window — sim path: PRNG fixture; live-bars path: REAL next-bars (agents never see it) */
   _forward: Bar[];
 }
 
@@ -74,6 +75,16 @@ export interface MandateIngest {
   hebrewNews: { name: string; url: string }[];
 }
 
+export interface MandateMarketData {
+  schema: string;
+  realBarsRequired: boolean;
+  decisionBars: number;
+  forwardMax: number;
+  minBars: number;
+  barRange: string;
+  law: string;
+}
+
 export interface Mandate {
   schema: string;
   execution: { mode: "paper" | "live"; liveOwnerArmed: boolean };
@@ -82,6 +93,7 @@ export interface Mandate {
   positions: MandatePositions;
   universe: { tase: string[]; global: string[] };
   hebrewFeeds: { name: string; url: string }[];
+  marketData: MandateMarketData;
   ingest: MandateIngest;
 }
 
@@ -278,6 +290,10 @@ export interface ChairResult {
 export interface Outcome {
   realizedPct: number;
   simClosed: boolean;
+  /** R353: live-bars path — no forward real bar yet = pending, honest zeros, never fabricated */
+  pending?: boolean;
+  /** R353: "measured-next-bar" | "awaiting-next-real-bar" — absent on the sim fixture path */
+  outcomeSource?: string;
 }
 
 export interface WeightDelta {
