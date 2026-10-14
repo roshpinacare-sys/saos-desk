@@ -1,0 +1,11 @@
+{
+  "name": "saos-desk",
+  "version": "1.0.0",
+  "description": "Sovereign Trading Boardroom (R338) - multi-agent cabinet, deterministic risk kernel, mandate-gated, paper-first",
+  "type": "module",
+  "scripts": {
+    "selftest": "bun selftest.mjs",
+    "beat": "bun src/cycle.mjs",
+    "verify-ledger": "bun src/checkpoint.mjs"
+  }
+}

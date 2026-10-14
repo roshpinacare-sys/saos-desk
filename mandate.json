@@ -1,0 +1,28 @@
+{
+  "schema": "saos-desk/mandate@1",
+  "execution": {
+    "mode": "paper",
+    "liveOwnerArmed": false
+  },
+  "limits": {
+    "maxPositionPct": 15,
+    "maxDailyLossPct": 2,
+    "kellyCap": 0.5,
+    "drawdownHaltPct": 10,
+    "volHaltPct": 2.5
+  },
+  "quorum": {
+    "minConfidence": 0.55,
+    "minWeightedScore": 0.35,
+    "rounds": 3
+  },
+  "universe": {
+    "tase": ["LEUMI.TA", "FIBI.TA", "POLI.TA", "NICE.TA", "TEVA.TA", "ICL.TA", "ESLT.TA", "BEZQ.TA", "MZTF.TA", "DSEA.TA"],
+    "global": ["SPY", "QQQ", "BTC-USD"]
+  },
+  "hebrewFeeds": [
+    { "name": "Calcalist", "url": "https://www.calcalist.co.il/AllNews.xml" },
+    { "name": "Globes", "url": "https://www.globes.co.il/webservice/rss/rss_feeds_rss20.xml?fid=1042" },
+    { "name": "TheMarker", "url": "https://www.themarker.com/cserver/rss/allnews" }
+  ]
+}

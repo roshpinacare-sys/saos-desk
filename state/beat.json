@@ -1,0 +1,39 @@
+{
+  "beat": 5,
+  "chainHead": "ff8ee2cb",
+  "head": "ff8ee2cb",
+  "equity": [
+    0.017,
+    -0.0208,
+    0,
+    0.062,
+    -0.0495
+  ],
+  "weights": {
+    "technical": {
+      "weight": 1.4645,
+      "wins": 3,
+      "losses": 1
+    },
+    "valuation": {
+      "weight": 1.4645,
+      "wins": 3,
+      "losses": 1
+    },
+    "momentum": {
+      "weight": 1.4645,
+      "wins": 3,
+      "losses": 1
+    },
+    "sentiment": {
+      "weight": 1.1716,
+      "wins": 2,
+      "losses": 1
+    },
+    "risk": {
+      "weight": 1.4645,
+      "wins": 3,
+      "losses": 1
+    }
+  }
+}
