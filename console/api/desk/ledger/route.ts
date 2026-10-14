@@ -4,7 +4,7 @@ import { ensureGenesisLedger, readLedgerChain } from "@/lib/desk/ledger";
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
-// saos-desk ledger — GET /api/desk/ledger (R347)
+// saos-desk ledger — GET /api/desk/ledger (R350)
 // הספר-הריבוני: רשומות-DeFi לפסיקות-השולחן. כל קריאה מאמתת את השרשרת כולה
 // (schema + kind + seq מונוטוני + prevSig + sig8) — אפס אמון, פגיעה = דיווח מדויק.
 

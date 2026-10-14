@@ -477,7 +477,7 @@ section(9, "positions + backtest — lifecycle, hard stops, VaR, lookahead-free 
 }
 
   // ───────────────────────────────────────────────────────────────────────────
-  section(10, "ledger — DeFi records: units, chain, fail-closed, no-clock (R347)");
+  section(10, "ledger — DeFi records: units, chain, fail-closed, no-clock (R350)");
   {
     // 10.1 schema + kinds declared
     ok("10.1 schema/kinds declared", LEDGER_SCHEMA === "saos-dex/desk-entry@1" && JSON.stringify(LEDGER_KINDS) === JSON.stringify(["deposit", "escrow_lock", "settle", "withdraw"]));

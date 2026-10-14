@@ -1195,12 +1195,12 @@ export default function DeskPage() {
           )}
         </section>
 
-        {/* ---- b5. הספר-הריבוני (R347) — DeFi records for chair decisions ---- */}
+        {/* ---- b5. הספר-הריבוני (R350) — DeFi records for chair decisions ---- */}
         <section aria-label="הספר-הריבוני" className="space-y-3">
           <div className="flex flex-wrap items-center gap-2 text-sm text-neutral-400">
             <BookOpen className="h-4 w-4 text-amber-500" aria-hidden />
             <span>
-              הספר-הריבוני — רשומות DeFi <Num v="R347" className="text-amber-400" />
+              הספר-הריבוני — רשומות DeFi <Num v="R350" className="text-amber-400" />
             </span>
             <span className="text-neutral-600">· deposit · escrow_lock · settle — שלמים-בלבד, שרשרת-חתימות, עוגן ב-saos-dex</span>
             <span className="flex-1" />

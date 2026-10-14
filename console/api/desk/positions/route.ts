@@ -58,7 +58,7 @@ function rowToPosition(row: {
 
 export async function GET() {
   try {
-    // בסיס-הספר (R347): deposit חד-פעמי — מדד-הון 100%
+    // בסיס-הספר (R350): deposit חד-פעמי — מדד-הון 100%
     await ensureGenesisLedger();
     const rows = await db.deskPosition.findMany({ orderBy: { openedAt: "desc" }, take: 100 });
     const book = rows.map(rowToPosition);
@@ -109,7 +109,7 @@ export async function GET() {
       if (p.status === "CLOSED" && before && before.status === "OPEN") stopCloses.push(p);
     }
 
-    // הספר-הריבוני (R347): כל עוצר שנורה נרשם settle חתום (רווח/הפסד כנה)
+    // הספר-הריבוני (R350): כל עוצר שנורה נרשם settle חתום (רווח/הפסד כנה)
     const ledgerNotes: { seq: number; kind: string; sig: string; mirror: string | null }[] = [];
     for (const closed of stopCloses) {
       const rec = await appendPositionToLedger(closed);
@@ -196,7 +196,7 @@ export async function POST(req: Request) {
           events: JSON.stringify(events),
         },
       });
-      // הספר-הריבוני (R347): סגירה-ידנית = רשומת-settle חתומה
+      // הספר-הריבוני (R350): סגירה-ידנית = רשומת-settle חתומה
       const ledgerRec = await appendPositionToLedger(rowToPosition(updated));
       return NextResponse.json({ ok: true as const, position: updated, ledger: ledgerRec });
     }
@@ -292,7 +292,7 @@ export async function POST(req: Request) {
           sig: openSig,
         },
       });
-      // הספר-הריבוני (R347): פתיחה = רשומת-escrow_lock חתומה (החשיפה ננעלת)
+      // הספר-הריבוני (R350): פתיחה = רשומת-escrow_lock חתומה (החשיפה ננעלת)
       const ledgerRec = await appendPositionToLedger(rowToPosition(created));
       return NextResponse.json({ ok: true as const, position: created, ledger: ledgerRec });
     }

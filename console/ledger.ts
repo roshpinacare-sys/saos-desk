@@ -1,4 +1,4 @@
-// saos-desk ledger — הספר-הריבוני: פורט 1:1 של repos/saos-desk/src/ledger.mjs (R347)
+// saos-desk ledger — הספר-הריבוני: פורט 1:1 של repos/saos-desk/src/ledger.mjs (R350)
 // Server-only (sig8/canonical come from engine.ts which uses node:crypto).
 // Units law: integers only cross the signature (bps = pct×100, mu = price×10000).
 // No clock: time fields come from the position/bar only; missing = null.

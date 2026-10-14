@@ -216,7 +216,7 @@ export interface FeedsResponse {
 
 export type Weights = Record<string, AgentWeightEntry>;
 
-/** GET /api/desk/ledger response (R347 sovereign book) — DeFi records for chair decisions. */
+/** GET /api/desk/ledger response (R350 sovereign book) — DeFi records for chair decisions. */
 export interface LedgerEntryRow {
   seq: number;
   kind: string;
