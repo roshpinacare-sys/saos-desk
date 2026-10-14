@@ -159,7 +159,8 @@ export function simOutcome(snap, decision, sizePct, horizon = 20) {
   return { realizedPct: round4(movePct * dir * frac), simClosed: true };
 }
 
-// ---- real-bars input (R353) ---------------------------------------------------
+// ---- real-bars input (R359) ---------------------------------------------------
+// (label migrated R353→R359: DECISIONS #38 first-registration-wins — R353=verification-lease; R358 taken by #40; precedents #30/#35 — label-only, zero logic change)
 // The kernel DECIDES ON MEASURED BARS when the artery supplies them.
 // genSeries/snapshot() are demoted to selftest fixtures — never a production
 // decision input. Fail-closed: any structural violation THROWS (never repaired,
@@ -218,7 +219,7 @@ export function snapshotFromBars(symbol, klass, bars, { used = 120, forwardMax =
   };
 }
 
-// Measured outcome on REAL next-bars (R353). No forward bar yet = pending:
+// Measured outcome on REAL next-bars (R359). No forward bar yet = pending:
 // realizedPct 0 and honest zeros everywhere — evolve() yields factor 1 (weights
 // untouched, wins/losses untouched). We NEVER fabricate a learning signal.
 export function realOutcome(snap, decision, sizePct) {

@@ -50,7 +50,7 @@ export const MANDATE: Mandate = {
     forwardMax: 5,
     minBars: 121,
     barRange: "6mo",
-    law: "R353: the kernel decides on measured bars; sim = selftest fixture only; pending outcome = honest zeros",
+    law: "R359: the kernel decides on measured bars; sim = selftest fixture only; pending outcome = honest zeros",
   },
   ingest: {
     schema: "saos-desk/ingest@1",

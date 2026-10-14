@@ -20,7 +20,7 @@ export interface Bar {
 }
 
 export interface Snapshot {
-  /** sim path: the PRNG seed; live-bars path (R353): null — the market generated these bars */
+  /** sim path: the PRNG seed; live-bars path (R359): null — the market generated these bars */
   seed: number | null;
   symbol: string;
   klass: string;
@@ -290,9 +290,9 @@ export interface ChairResult {
 export interface Outcome {
   realizedPct: number;
   simClosed: boolean;
-  /** R353: live-bars path — no forward real bar yet = pending, honest zeros, never fabricated */
+  /** R359: live-bars path — no forward real bar yet = pending, honest zeros, never fabricated */
   pending?: boolean;
-  /** R353: "measured-next-bar" | "awaiting-next-real-bar" — absent on the sim fixture path */
+  /** R359: "measured-next-bar" | "awaiting-next-real-bar" — absent on the sim fixture path */
   outcomeSource?: string;
 }
 

@@ -1,8 +1,8 @@
-// saos-desk cycle — one desk beat end-to-end (R338, R345 feed gate, R353 real-bars input)
+// saos-desk cycle — one desk beat end-to-end (R338, R345 feed gate, R359 real-bars input)
 // beat = snapshot -> cabinet -> boardroom -> [feed gate R345] -> outcome(measured|sim) -> reflexivity -> checkpoint
 // Paper-only by mandate; live execution is owner-gated and ABSENT (zero keys).
 // R345: a REFRAIN feed verdict forces the chair flat — observation-only, fail-closed.
-// R353: realBars present -> the kernel decides on MEASURED bars (law #14); the sim
+// R359: realBars present -> the kernel decides on MEASURED bars (law #14); the sim
 // path survives for selftest fixtures only. Pending outcome = honest zeros, never fabricated.
 import fs from "node:fs";
 import { snapshot, simOutcome, snapshotFromBars, realOutcome } from "./kernel.mjs";

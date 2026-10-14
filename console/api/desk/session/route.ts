@@ -11,7 +11,7 @@ export const dynamic = "force-dynamic";
 // In-process mutex: one beat at a time, so beat numbers and the sig chain stay honest.
 let beatQueue: Promise<unknown> = Promise.resolve();
 
-// POST /api/desk/session — run ONE full desk beat: REAL bars (R353 law #14) ->
+// POST /api/desk/session — run ONE full desk beat: REAL bars (R359 law #14) ->
 // snapshot -> cabinet -> boardroom -> measured outcome -> reflexivity -> persist.
 // Fail-closed: no real bars (dead feed / too few) = NO-REAL-BARS honest refusal —
 // a symbol without measured data NEVER gets a decision (no synthesized numbers).
@@ -67,7 +67,7 @@ async function runOneBeat(symbol: string, klass: "tase" | "global") {
     const equity = priorBeats.map((b) => b.realizedPct);
     const prevSig = priorBeats.length > 0 ? priorBeats[priorBeats.length - 1].sig : "GENESIS";
 
-    // R353: fetch REAL daily bars FIRST — the decision input is measured, not generated
+    // R359: fetch REAL daily bars FIRST — the decision input is measured, not generated
     const md = MANDATE.marketData;
     const chart = await fetchBars(symbol, md.barRange);
     if (!chart.ok || !Array.isArray(chart.bars) || chart.bars.length < md.minBars) {

@@ -1,4 +1,4 @@
-// saos-desk beat-live — ONE desk beat on REAL bars (R353, law #14).
+// saos-desk beat-live — ONE desk beat on REAL bars (R359, law #14).
 // The ONLY network touch stays src/fetch-live.mjs (law #11). No keys, public GET only.
 // Dead/insufficient bars = NO-REAL-BARS, honest exit 2 — never a fabricated decision.
 // Usage: bun src/beat-live.mjs <symbol> [stateDir]

@@ -183,7 +183,7 @@ export function simOutcome(snap: Snapshot, decision: Decision | AgentAction, siz
   return { realizedPct: round4(movePct * dir * frac), simClosed: true };
 }
 
-// ---- real-bars input (R353) ---------------------------------------------------
+// ---- real-bars input (R359) ---------------------------------------------------
 // Faithful port of repos/saos-desk/src/kernel.mjs (source of truth).
 // The kernel DECIDES ON MEASURED BARS; genSeries/snapshot() are selftest fixtures
 // only (law #14). Fail-closed: any structural violation THROWS — never repaired,
@@ -247,7 +247,7 @@ export function snapshotFromBars(symbol: string, klass: string, bars: Bar[], opt
   };
 }
 
-// Measured outcome on REAL next-bars (R353). No forward bar yet = pending:
+// Measured outcome on REAL next-bars (R359). No forward bar yet = pending:
 // honest zeros everywhere — evolve() yields factor 1 (weights untouched).
 export function realOutcome(snap: Snapshot, decision: Decision | AgentAction, sizePct: number): Outcome {
   const f = Array.isArray(snap._forward) ? snap._forward : [];
@@ -528,7 +528,7 @@ export interface PureBeatInput {
   equity: number[];
   prevSig: string;
   wallClock: string | null;
-  /** R353: when present, the kernel decides on these MEASURED bars (law #14) */
+  /** R359: when present, the kernel decides on these MEASURED bars (law #14) */
   realBars?: Bar[] | null;
 }
 

@@ -535,7 +535,7 @@ section(9, "positions + backtest — lifecycle, hard stops, VaR, lookahead-free 
   }
 
   // ───────────────────────────────────────────────────────────────────────────
-  section(11, "real-bars kernel input — measured decisions, pending honesty, fail-closed (R353)");
+  section(11, "real-bars kernel input — measured decisions, pending honesty, fail-closed (R359)");
   {
     // 11.1 lockstep proof: snapshotFromBars on genSeries output is bit-identical
     // to snapshot()'s indicator fields on the same seen-bars (no math drift ever).
