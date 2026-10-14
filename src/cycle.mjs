@@ -1,12 +1,15 @@
-// saos-desk cycle — one desk beat end-to-end (R338)
-// beat = snapshot -> cabinet -> boardroom -> outcome(sim) -> reflexivity -> checkpoint
+// saos-desk cycle — one desk beat end-to-end (R338, R345 adds the feed gate)
+// beat = snapshot -> cabinet -> boardroom -> [feed gate R345] -> outcome(sim) -> reflexivity -> checkpoint
 // Paper-only by mandate; live execution is owner-gated and ABSENT (zero keys).
+// R345: a REFRAIN feed verdict forces the chair flat — observation-only, fail-closed.
 import fs from "node:fs";
 import { snapshot, simOutcome } from "./kernel.mjs";
 import { cabinet } from "./agents.mjs";
 import { runBoardroom } from "./boardroom.mjs";
+import { guardedChair } from "./ingest.mjs";
 import { evolve } from "./reflexivity.mjs";
 import { loadState, appendLedger, saveSnapshot, resumeCheck, verifyLedger } from "./checkpoint.mjs";
+import { loadFeedState } from "./fetch-live.mjs";
 
 export function seedWeights() {
   const w = {};
@@ -16,7 +19,7 @@ export function seedWeights() {
   return w;
 }
 
-export function runBeat({ seed, symbol, klass = "tase", mandate, stateDir, snapFn = null, wallClock = null }) {
+export function runBeat({ seed, symbol, klass = "tase", mandate, stateDir, snapFn = null, wallClock = null, feedAssessment = null }) {
   const resume = resumeCheck(stateDir);
   if (!resume.ok) {
     return { ok: false, error: "RESUME-CHECK-FAILED", resume };
@@ -29,7 +32,8 @@ export function runBeat({ seed, symbol, klass = "tase", mandate, stateDir, snapF
     return { ok: false, error: "SNAPSHOT-FAILED", reason: String(e?.message ?? e) };
   }
   const verdicts = cabinet(snap, mandate, state.weights);
-  const board = runBoardroom(snap, mandate, verdicts, state);
+  const board0 = runBoardroom(snap, mandate, verdicts, state);
+  const board = guardedChair(board0, feedAssessment);
   const outcome = simOutcome(snap, board.chair.decision, board.chair.sizePct);
   const evolved = evolve(state.weights, board.agents, board.chair.decision, board.chair.sizePct, outcome.realizedPct);
 
@@ -47,6 +51,11 @@ export function runBeat({ seed, symbol, klass = "tase", mandate, stateDir, snapF
       bars: snap.bars.map((b) => [b.o, b.h, b.l, b.c]),
     },
     dataMode: snapFn ? "live-probe" : "sim",
+    feed: {
+      verdict: feedAssessment?.verdict ?? "UNPROBED",
+      refrain: board.refrain === true,
+      reason: board.refrain === true ? (feedAssessment?.reasons ?? ["REFRAIN"]).join(" · ") : null,
+    },
     agents: board.agents,
     debate: board.debate,
     chair: board.chair,
@@ -88,6 +97,7 @@ export function deskStatus(stateDir, mandate) {
     limits: mandate.limits,
     ledger: v,
     resume,
+    feed: loadFeedState(stateDir, Date.now(), { maxAgeMin: mandate.ingest?.freshnessMaxMin ?? 90 }),
     beat: state?.beat ?? 0,
     chainHead: state?.chainHead ?? null,
     weights: state?.weights ?? seedWeights(),
@@ -102,6 +112,9 @@ if (isMain) {
   const symbol = process.argv[3] ?? "LEUMI.TA";
   const mandate = JSON.parse(fs.readFileSync(new URL("../mandate.json", import.meta.url), "utf8"));
   const stateDir = process.argv[4] ?? new URL("../state", import.meta.url).pathname;
-  const r = runBeat({ seed, symbol, mandate, stateDir, wallClock: new Date().toISOString() });
-  console.log(JSON.stringify(r.ok ? { sig: r.artifact.sig, beat: r.artifact.beat, decision: r.artifact.chair.decision, sizePct: r.artifact.chair.sizePct, realizedPct: r.artifact.outcome.realizedPct } : r, null, 2));
+  // R345: the beat consults the sealed feed state — stale/tampered/dead artery = REFRAIN
+  const feed = loadFeedState(stateDir, Date.now(), { maxAgeMin: mandate.ingest?.freshnessMaxMin ?? 90 });
+  const feedAssessment = feed.ok ? feed.assessment : { verdict: "REFRAIN", reasons: [feed.reason ?? "feed-state-unavailable"] };
+  const r = runBeat({ seed, symbol, mandate, stateDir, wallClock: new Date().toISOString(), feedAssessment });
+  console.log(JSON.stringify(r.ok ? { sig: r.artifact.sig, beat: r.artifact.beat, decision: r.artifact.chair.decision, sizePct: r.artifact.chair.sizePct, realizedPct: r.artifact.outcome.realizedPct, feed: r.artifact.feed } : r, null, 2));
 }

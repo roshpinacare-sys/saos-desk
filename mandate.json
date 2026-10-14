@@ -1,5 +1,5 @@
 {
-  "schema": "saos-desk/mandate@1",
+  "schema": "saos-desk/mandate@2",
   "execution": {
     "mode": "paper",
     "liveOwnerArmed": false
@@ -19,6 +19,25 @@
   "universe": {
     "tase": ["LEUMI.TA", "FIBI.TA", "POLI.TA", "NICE.TA", "TEVA.TA", "ICL.TA", "ESLT.TA", "BEZQ.TA", "MZTF.TA", "DSEA.TA"],
     "global": ["SPY", "QQQ", "BTC-USD"]
+  },
+  "ingest": {
+    "schema": "saos-desk/ingest@1",
+    "publicEndpointsOnly": true,
+    "keysAllowed": false,
+    "timeoutMs": 8000,
+    "maxBytes": 262144,
+    "maxRssItems": 12,
+    "minAliveRatio": 0.7,
+    "anomalyMovePct": 12,
+    "freshnessMaxMin": 90,
+    "quoteHosts": [
+      "https://query1.finance.yahoo.com",
+      "https://query2.finance.yahoo.com"
+    ],
+    "hebrewNews": [
+      { "name": "GoogleNews-Hebrew", "url": "https://news.google.com/rss/search?q=%D7%9E%D7%A0%D7%99%D7%95%D7%AA%20%D7%AA%D7%9C%20%D7%90%D7%91%D7%99%D7%91%20OR%20%D7%91%D7%95%D7%A8%D7%A1%D7%94&hl=he&gl=IL&ceid=IL:he" },
+      { "name": "Ynet-Finance", "url": "https://www.ynet.co.il/Integration/StoryRss1854.xml" }
+    ]
   },
   "hebrewFeeds": [
     { "name": "Calcalist", "url": "https://www.calcalist.co.il/AllNews.xml" },

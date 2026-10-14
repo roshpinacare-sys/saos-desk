@@ -1,13 +1,15 @@
 {
-  "beat": 5,
-  "chainHead": "ff8ee2cb",
-  "head": "ff8ee2cb",
+  "beat": 7,
+  "chainHead": "71144673",
+  "head": "71144673",
   "equity": [
     0.017,
     -0.0208,
     0,
     0.062,
-    -0.0495
+    -0.0495,
+    0,
+    0
   ],
   "weights": {
     "technical": {
