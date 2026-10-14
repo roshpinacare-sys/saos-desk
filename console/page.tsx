@@ -7,6 +7,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import {
   Activity,
+  BookOpen,
   Briefcase,
   CheckCircle2,
   Dna,
@@ -14,6 +15,7 @@ import {
   Gavel,
   History,
   KeyRound,
+  Landmark,
   LineChart,
   Loader2,
   MessageSquare,
@@ -58,6 +60,8 @@ import type {
   FeedsResponse,
   Outcome,
   PositionsResponse,
+  LedgerResponse,
+  LedgerEntryRow,
   RiskGateResult,
   Verdict,
   WeightDelta,
@@ -410,6 +414,8 @@ export default function DeskPage() {
   const [btLoading, setBtLoading] = useState(false)
   const [btError, setBtError] = useState<string | null>(null)
   const [btRange, setBtRange] = useState<'3mo' | '6mo' | '1y'>('6mo')
+  const [sovereignBook, setSovereignBook] = useState<LedgerResponse | null>(null)
+  const [bookLoading, setBookLoading] = useState(true)
 
   const loadFeeds = useCallback(async () => {
     setFeedsLoading(true)
@@ -437,6 +443,18 @@ export default function DeskPage() {
     }
   }, [])
 
+  const loadSovereignBook = useCallback(async () => {
+    setBookLoading(true)
+    try {
+      const j = await getJson<LedgerResponse>('/api/desk/ledger')
+      setSovereignBook(j)
+    } catch {
+      setSovereignBook(null) // fail-closed: אין ספר מזויף
+    } finally {
+      setBookLoading(false)
+    }
+  }, [])
+
   async function deskAction(body: Record<string, unknown>) {
     setPositionsBusy(true)
     setPositionsMsg(null)
@@ -452,6 +470,7 @@ export default function DeskPage() {
       } else {
         setPositionsMsg(body.action === 'open' ? 'עמדת-נייר נפתחה במחיר-חי.' : 'העמדה נסגרה במחיר-חי.')
         await loadPositions()
+        await loadSovereignBook()
       }
     } catch {
       setPositionsMsg('הפעולה נכשלה — השירות אינו זמין כרגע.')
@@ -499,10 +518,11 @@ export default function DeskPage() {
     })()
     loadFeeds()
     loadPositions()
+    loadSovereignBook()
     return () => {
       alive = false
     }
-  }, [refresh, loadFeeds, loadPositions])
+  }, [refresh, loadFeeds, loadPositions, loadSovereignBook])
 
   async function runSession() {
     setRunning(true)
@@ -1173,6 +1193,130 @@ export default function DeskPage() {
           ) : bt && !bt.ok ? null : (
             <p className="text-xs text-neutral-600">בחר סמל והרץ — המנוע ייבחן על נרות-יום אמיתיים מהעורק.</p>
           )}
+        </section>
+
+        {/* ---- b5. הספר-הריבוני (R347) — DeFi records for chair decisions ---- */}
+        <section aria-label="הספר-הריבוני" className="space-y-3">
+          <div className="flex flex-wrap items-center gap-2 text-sm text-neutral-400">
+            <BookOpen className="h-4 w-4 text-amber-500" aria-hidden />
+            <span>
+              הספר-הריבוני — רשומות DeFi <Num v="R347" className="text-amber-400" />
+            </span>
+            <span className="text-neutral-600">· deposit · escrow_lock · settle — שלמים-בלבד, שרשרת-חתימות, עוגן ב-saos-dex</span>
+            <span className="flex-1" />
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={loadSovereignBook}
+              disabled={bookLoading}
+              className="h-7 border-neutral-800 bg-neutral-950 px-2 text-[11px] text-neutral-400 hover:bg-neutral-900"
+            >
+              {bookLoading ? <Loader2 className="ml-1 h-3 w-3 animate-spin" aria-hidden /> : <RefreshCw className="ml-1 h-3 w-3" aria-hidden />}
+              אמת שרשרת
+            </Button>
+          </div>
+
+          <Panel
+            title="ספר-הפסיקות — כל אירוע-עמדה נרשם לנצח"
+            icon={<Landmark className="h-4 w-4 text-amber-500" aria-hidden />}
+            tag={
+              sovereignBook?.chain ? (
+                sovereignBook.chain.ok ? (
+                  <Badge variant="outline" className="border-emerald-500/40 bg-emerald-500/10 px-1.5 py-0 text-[10px] text-emerald-400">
+                    שרשרת אומתה · {sovereignBook.chain.count} רשומות
+                  </Badge>
+                ) : (
+                  <Badge variant="outline" className="border-rose-500/40 bg-rose-500/10 px-1.5 py-0 text-[10px] text-rose-400">
+                    שרשרת פגועה ב-#{sovereignBook.chain.brokenAt}
+                  </Badge>
+                )
+              ) : null
+            }
+          >
+            {bookLoading && !sovereignBook ? (
+              <Skeleton className="h-40 bg-neutral-800" />
+            ) : sovereignBook?.ok && sovereignBook.entries.length > 0 ? (
+              <div className="space-y-2">
+                <div className="desk-scroll max-h-72 overflow-y-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow className="border-neutral-800">
+                        <TableHead className="text-neutral-400">seq</TableHead>
+                        <TableHead className="text-neutral-400">סוג</TableHead>
+                        <TableHead className="text-neutral-400">סמל</TableHead>
+                        <TableHead className="text-left text-neutral-400">גודל</TableHead>
+                        <TableHead className="text-left text-neutral-400">כניסה → יציאה</TableHead>
+                        <TableHead className="text-left text-neutral-400">מימוש</TableHead>
+                        <TableHead className="text-neutral-400">חתימה</TableHead>
+                        <TableHead className="text-neutral-400">עוגן-דקס</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {[...sovereignBook.entries].reverse().map((e) => {
+                        const price = (mu: number | null) => (mu != null ? (mu / 10000).toLocaleString('en-US', { maximumFractionDigits: 2 }) : '—')
+                        return (
+                          <TableRow key={e.seq} className="border-neutral-800/60">
+                            <TableCell className="font-mono text-[11px] text-neutral-500">{e.seq}</TableCell>
+                            <TableCell>
+                              <Badge
+                                variant="outline"
+                                className={`px-1.5 py-0 text-[10px] ${
+                                  e.kind === 'deposit'
+                                    ? 'border-sky-500/40 bg-sky-500/10 text-sky-400'
+                                    : e.kind === 'escrow_lock'
+                                      ? 'border-amber-500/40 bg-amber-500/10 text-amber-400'
+                                      : 'border-neutral-600 bg-neutral-800/60 text-neutral-300'
+                                }`}
+                              >
+                                {e.kind === 'deposit' ? 'הפקדה' : e.kind === 'escrow_lock' ? 'נעילת-ערבות' : e.kind === 'settle' ? 'מימוש' : e.kind === 'withdraw' ? 'משיכה' : e.kind}
+                              </Badge>
+                            </TableCell>
+                            <TableCell className="text-[11px] text-neutral-300">
+                              {e.symbol ? symbolName(e.symbol) : e.kind === 'deposit' ? 'בסיס-הון' : '—'}
+                            </TableCell>
+                            <TableCell className="text-left font-mono text-[11px] text-neutral-300">{e.sizeBps != null ? `${(e.sizeBps / 100).toFixed(1)}%` : '—'}</TableCell>
+                            <TableCell className="text-left font-mono text-[11px] text-neutral-300" dir="ltr">
+                              {e.kind === 'settle' ? `${price(e.entryMu)} → ${price(e.exitMu)}` : price(e.entryMu)}
+                            </TableCell>
+                            <TableCell className={`text-left font-mono text-xs ${e.realizedBps != null ? pnlClass(e.realizedBps / 100) : 'text-neutral-500'}`}>
+                              {e.realizedBps != null ? pctStr(e.realizedBps / 100) : e.kind === 'deposit' ? 'בסיס 100%' : '—'}
+                            </TableCell>
+                            <TableCell className="font-mono text-[11px] text-neutral-500" dir="ltr">
+                              {e.sig}
+                            </TableCell>
+                            <TableCell className="text-[10px]">
+                              {e.mirror === 'OK' ? (
+                                <span className="text-emerald-400">ננעל בדקס</span>
+                              ) : e.mirror ? (
+                                <span className="text-amber-400/80" title={e.mirror}>
+                                  {e.mirror.startsWith('REFUSED') ? 'נדחה-דקס' : 'לא-נגיש'}
+                                </span>
+                              ) : (
+                                <span className="text-neutral-600">—</span>
+                              )}
+                            </TableCell>
+                          </TableRow>
+                        )
+                      })}
+                    </TableBody>
+                  </Table>
+                </div>
+                {!sovereignBook.chain.ok ? (
+                  <p role="alert" className="rounded-md border border-rose-500/40 bg-rose-500/10 px-3 py-2 text-xs text-rose-300">
+                    אימות-אפס-אמון נכשל: {sovereignBook.chain.reasons.join(' · ')} — השרשרת פגועה, הרשומות מוצגות כראיה.
+                  </p>
+                ) : (
+                  <p className="text-[11px] text-neutral-600">
+                    אימות-אפס-אמון בכל קריאה (schema · seq מונוטוני · prevSig · sig8) — הרשומות הן הראיה, לא ההבטחה. העוגן הריבוני: saos-dex (קבלות חתומות, אפס-ברוקר).
+                  </p>
+                )}
+              </div>
+            ) : sovereignBook?.ok ? (
+              <p className="text-xs text-neutral-600">הספר ריק — הפקדת-הבסיס תירשם בפעימה-הראשונה של ספר-העמדות.</p>
+            ) : (
+              <p className="text-xs text-amber-400/80">הספר-הריבוני אינו זמין כרגע — fail-closed, אין ספר מזויף.</p>
+            )}
+          </Panel>
         </section>
 
         {/* ---- c. Cabinet row ---- */}

@@ -216,6 +216,33 @@ export interface FeedsResponse {
 
 export type Weights = Record<string, AgentWeightEntry>;
 
+/** GET /api/desk/ledger response (R347 sovereign book) — DeFi records for chair decisions. */
+export interface LedgerEntryRow {
+  seq: number;
+  kind: string;
+  symbol: string | null;
+  positionId: string | null;
+  at: string | null;
+  realizedBps: number | null;
+  sizeBps: number | null;
+  entryMu: number | null;
+  exitMu: number | null;
+  closeReason: string | null;
+  equityBps: number | null;
+  sig: string;
+  prevSig: string | null;
+  mirror: string | null;
+  createdAt: string;
+}
+
+export interface LedgerResponse {
+  ok: boolean;
+  schema: string;
+  chain: { ok: boolean; count: number; brokenAt: number | null; reasons: string[] };
+  entries: LedgerEntryRow[];
+  paperOnly: boolean;
+}
+
 export interface RiskCheck {
   id: string;
   label: string;

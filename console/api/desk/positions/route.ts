@@ -12,6 +12,7 @@ import {
   type MarkBar,
 } from "@/lib/desk/positions";
 import { fetchBars } from "@/lib/desk/fetchers";
+import { ensureGenesisLedger, appendPositionToLedger } from "@/lib/desk/ledger";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -57,6 +58,8 @@ function rowToPosition(row: {
 
 export async function GET() {
   try {
+    // בסיס-הספר (R347): deposit חד-פעמי — מדד-הון 100%
+    await ensureGenesisLedger();
     const rows = await db.deskPosition.findMany({ orderBy: { openedAt: "desc" }, take: 100 });
     const book = rows.map(rowToPosition);
     const openRows = book.filter((p) => p.status === "OPEN");
@@ -85,6 +88,7 @@ export async function GET() {
     }
 
     // persist marks + stop-fires (the book is real state)
+    const stopCloses: (PaperPosition & { lastMarkT: number })[] = [];
     for (const [id, p] of Object.entries(marked)) {
       await db.deskPosition.update({
         where: { id },
@@ -101,6 +105,16 @@ export async function GET() {
           events: JSON.stringify(p.events),
         },
       });
+      const before = book.find((b) => b.id === id);
+      if (p.status === "CLOSED" && before && before.status === "OPEN") stopCloses.push(p);
+    }
+
+    // הספר-הריבוני (R347): כל עוצר שנורה נרשם settle חתום (רווח/הפסד כנה)
+    const ledgerNotes: { seq: number; kind: string; sig: string; mirror: string | null }[] = [];
+    for (const closed of stopCloses) {
+      const rec = await appendPositionToLedger(closed);
+      if (rec.ok) ledgerNotes.push({ seq: rec.seq, kind: rec.kind, sig: rec.sig, mirror: rec.mirror ?? null });
+      else ledgerNotes.push({ seq: -1, kind: `LEDGER-REFUSED:${rec.reason}`, sig: "", mirror: null });
     }
 
     // historical VaR from real daily returns of the OPEN symbols (3mo depth, mandate-gated)
@@ -129,6 +143,7 @@ export async function GET() {
       portfolio,
       var: varRes,
       marks: [...marksBySymbol.entries()].map(([symbol, m]) => ({ symbol, ok: m.ok, last: m.last, reason: m.reason ?? null })),
+      ledger: { recorded: ledgerNotes },
       mandate: MANDATE.positions,
       paperOnly: true,
     });
@@ -181,7 +196,9 @@ export async function POST(req: Request) {
           events: JSON.stringify(events),
         },
       });
-      return NextResponse.json({ ok: true as const, position: updated });
+      // הספר-הריבוני (R347): סגירה-ידנית = רשומת-settle חתומה
+      const ledgerRec = await appendPositionToLedger(rowToPosition(updated));
+      return NextResponse.json({ ok: true as const, position: updated, ledger: ledgerRec });
     }
 
     if (body.action === "open") {
@@ -275,7 +292,9 @@ export async function POST(req: Request) {
           sig: openSig,
         },
       });
-      return NextResponse.json({ ok: true as const, position: created });
+      // הספר-הריבוני (R347): פתיחה = רשומת-escrow_lock חתומה (החשיפה ננעלת)
+      const ledgerRec = await appendPositionToLedger(rowToPosition(created));
+      return NextResponse.json({ ok: true as const, position: created, ledger: ledgerRec });
     }
 
     return NextResponse.json({ ok: false as const, message: "פעולה לא מוכרת (open/close בלבד)." }, { status: 400 });

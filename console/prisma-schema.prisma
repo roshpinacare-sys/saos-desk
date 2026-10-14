@@ -83,3 +83,19 @@ model DeskPosition {
   sig           String   @unique // signature of the OPEN event payload (idempotency)
   updatedAt     DateTime @updatedAt
 }
+
+// saos-desk R347 — הספר-הריבוני: רשומות-DeFi לפסיקות-השולחן (SAOS-DEX-LEDGER/1)
+// החוק חי ב-repos/saos-desk/src/ledger.mjs (ported 1:1 ל-src/lib/desk/ledger.ts).
+// השורה היא הספר; ה-payload הוא הרשומה החתומה (הראיה עצמה, canonical JSON).
+model DeskLedgerEntry {
+  id         String   @id @default(cuid())
+  seq        Int      @unique
+  kind       String // deposit | escrow_lock | settle | withdraw
+  positionId String?
+  symbol     String?
+  payload    String // canonical JSON of the signed record (schema/seq/kind/prevSig/body/sig)
+  sig        String   @unique
+  prevSig    String?
+  mirror     String? // קבלת-המראה מ-saos-dex: "OK" או סיבת-סירוב כנה
+  createdAt  DateTime @default(now())
+}

@@ -9,6 +9,7 @@ import { evolve } from "./src/reflexivity.mjs";
 import { loadState, appendLedger, verifyLedger, resumeCheck } from "./src/checkpoint.mjs";
 import { runBeat, seedWeights } from "./src/cycle.mjs";
 import { TASE_UNIVERSE, HEBREW_FEEDS } from "./src/data.mjs";
+import { LEDGER_SCHEMA, LEDGER_KINDS, genesisDeposit, positionToLock, positionToSettle, verifyLedgerChain, eventToLedgerRecords } from "./src/ledger.mjs";
 
 let pass = 0, fail = 0;
 const fails = [];
@@ -474,6 +475,64 @@ section(9, "positions + backtest — lifecycle, hard stops, VaR, lookahead-free 
     ok("9.30 sealed real backtest absent (fail-closed honest)", true);
   }
 }
+
+  // ───────────────────────────────────────────────────────────────────────────
+  section(10, "ledger — DeFi records: units, chain, fail-closed, no-clock (R347)");
+  {
+    // 10.1 schema + kinds declared
+    ok("10.1 schema/kinds declared", LEDGER_SCHEMA === "saos-dex/desk-entry@1" && JSON.stringify(LEDGER_KINDS) === JSON.stringify(["deposit", "escrow_lock", "settle", "withdraw"]));
+
+    // 10.2 genesis deposit: equity index 10000bps, chained from null
+    const dep = genesisDeposit({ seq: 0, prevSig: null });
+    ok("10.2 genesis deposit measured", dep.ok && dep.record.kind === "deposit" && dep.record.equityBps === 10000 && dep.record.prevSig === null && typeof dep.record.sig === "string" && dep.record.sig.length === 8);
+
+    // 10.3 crafted positions (same shape the engine produces)
+    const openPos = { id: "p1", symbol: "TEVA.TA", side: "buy", sizePct: 15, status: "OPEN", entryPrice: 12920, stopPrice: 12338.57, targetPrice: 14082.86, riskPerUnit: 581.43, atrAtEntry: 290.71, openedAt: "2026-10-14T10:00:00Z", prevSig: null, lastMark: 12920, unrealizedPct: 0, barsHeld: 0, events: [] };
+    const lock = positionToLock(openPos, 1, dep.record.sig);
+    ok("10.4 escrow_lock integers-only", lock.ok && lock.record.sizeBps === 1500 && lock.record.entryMu === 129200000 && lock.record.stopMu === 123385700 && lock.record.targetMu === 140828600 && lock.record.atrMu === 2907100);
+    ok("10.5 lock carries bar-time not clock", lock.record.at === "2026-10-14T10:00:00Z");
+
+    const closedPos = { ...openPos, status: "CLOSED", exitPrice: 14082.86, realizedPct: 9.0, closedAt: "2026-10-20T10:00:00Z", closeReason: "TAKE-PROFIT", barsHeld: 6 };
+    const settle = positionToSettle(closedPos, 2, lock.record.sig);
+    ok("10.6 settle records realized loss AND profit", settle.ok && settle.record.realizedBps === 900 && settle.record.exitMu === 140828600 && settle.record.closeReason === "TAKE-PROFIT" && settle.record.barsHeld === 6);
+    const closedLoss = { ...closedPos, realizedPct: -3.5, closeReason: "STOP-LOSS", exitPrice: 12468.8 };
+    const settleLoss = positionToSettle(closedLoss, 3, settle.record.sig);
+    ok("10.7 losses recorded honestly (negative bps)", settleLoss.ok && settleLoss.record.realizedBps === -350);
+
+    // 10.8 chain verifies; tamper detected at exact index
+    const chain = [dep.record, lock.record, settle.record, settleLoss.record];
+    const v = verifyLedgerChain(chain);
+    ok("10.8 chain verifies (seq+prevSig+sig)", v.ok && v.count === 4 && v.brokenAt === null);
+    const tampered = chain.map((r, i) => (i === 2 ? { ...r, realizedBps: 9999 } : r));
+    const vt = verifyLedgerChain(tampered);
+    ok("10.9 tamper detected at exact index", vt.ok === false && vt.brokenAt === 2 && vt.reasons.some((x) => x.endsWith(":SIG")));
+    const relinked = chain.map((r, i) => (i === 2 ? { ...r, prevSig: "deadbeef" } : r));
+    ok("10.10 prevSig break detected", verifyLedgerChain(relinked).reasons.some((x) => x === "#2:PREVSIG"));
+    const seqJump = chain.map((r, i) => (i === 3 ? { ...r, seq: 99 } : r));
+    ok("10.11 seq monotonicity enforced", verifyLedgerChain(seqJump).reasons.some((x) => x === "#3:SEQ"));
+    ok("10.12 unknown kind refused", verifyLedgerChain([{ ...chain[0], kind: "magic" }]).reasons.some((x) => x === "#0:KIND"));
+    ok("10.13 empty chain is honestly ok", verifyLedgerChain([]).ok === true && verifyLedgerChain([]).count === 0);
+
+    // 10.14 fail-closed: malformed positions refused, zero records
+    ok("10.14 lock refuses closed position", positionToLock(closedPos, 1, null).ok === false);
+    ok("10.15 settle refuses open position", positionToSettle(openPos, 1, null).ok === false);
+    ok("10.16 refuses bad side", positionToLock({ ...openPos, side: "sideways" }, 1, null).ok === false);
+    ok("10.17 refuses non-finite price", positionToLock({ ...openPos, entryPrice: Infinity }, 1, null).ok === false);
+    ok("10.18 refuses negative/zero size", positionToLock({ ...openPos, sizePct: 0 }, 1, null).ok === false);
+    ok("10.19 refuses missing closeReason", positionToSettle({ ...closedPos, closeReason: "" }, 1, null).ok === false);
+    ok("10.20 refuses null position", positionToLock(null, 1, null).ok === false && eventToLedgerRecords(null, {}).ok === false);
+    ok("10.21 refused events carry zero records", eventToLedgerRecords({ status: "MUTATED" }, { seq: 1 }).ok === false && eventToLedgerRecords({ status: "MUTATED" }, { seq: 1 }).records.length === 0);
+
+    // 10.22 determinism: same inputs → bit-identical record (no clock, no rng)
+    const a = positionToLock(openPos, 1, dep.record.sig).record;
+    const b = positionToLock(openPos, 1, dep.record.sig).record;
+    ok("10.22 bit-identical determinism", JSON.stringify(a) === JSON.stringify(b));
+
+    // 10.23 full flow: eventToLedgerRecords chains lock→settle on the same position lifecycle
+    const flowLock = eventToLedgerRecords(openPos, { seq: 1, prevSig: dep.record.sig });
+    const flowSettle = eventToLedgerRecords(closedPos, { seq: 2, prevSig: flowLock.records[0].sig });
+    ok("10.23 lifecycle flow chains correctly", flowLock.ok && flowSettle.ok && verifyLedgerChain([dep.record, flowLock.records[0], flowSettle.records[0]]).brokenAt === null);
+  }
 
 console.log(`\n${pass}/${pass + fail} PASS${fail > 0 ? " — FAILURES: " + fails.join(", ") : ""}`);
 process.exit(fail > 0 ? 1 : 0);
