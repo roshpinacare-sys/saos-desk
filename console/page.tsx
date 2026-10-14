@@ -7,8 +7,10 @@
 import { useCallback, useEffect, useState } from 'react'
 import {
   Activity,
+  Briefcase,
   CheckCircle2,
   Dna,
+  FlaskConical,
   Gavel,
   History,
   KeyRound,
@@ -48,12 +50,14 @@ import {
 } from '@/components/ui/table'
 import { GLOBAL_UNIVERSE, TASE_UNIVERSE, symbolName } from '@/lib/desk/mandate'
 import type {
+  BacktestResponse,
   ChairResult,
   DebateRound,
   Decision,
   DeskArtifact,
   FeedsResponse,
   Outcome,
+  PositionsResponse,
   RiskGateResult,
   Verdict,
   WeightDelta,
@@ -397,6 +401,15 @@ export default function DeskPage() {
   const [feeds, setFeeds] = useState<FeedsResponse | null>(null)
   const [feedsLoading, setFeedsLoading] = useState(true)
   const [feedsError, setFeedsError] = useState<string | null>(null)
+  const [positions, setPositions] = useState<PositionsResponse | null>(null)
+  const [positionsLoading, setPositionsLoading] = useState(true)
+  const [positionsBusy, setPositionsBusy] = useState(false)
+  const [positionsError, setPositionsError] = useState<string | null>(null)
+  const [positionsMsg, setPositionsMsg] = useState<string | null>(null)
+  const [bt, setBt] = useState<BacktestResponse | null>(null)
+  const [btLoading, setBtLoading] = useState(false)
+  const [btError, setBtError] = useState<string | null>(null)
+  const [btRange, setBtRange] = useState<'3mo' | '6mo' | '1y'>('6mo')
 
   const loadFeeds = useCallback(async () => {
     setFeedsLoading(true)
@@ -410,6 +423,56 @@ export default function DeskPage() {
       setFeedsLoading(false)
     }
   }, [])
+
+  const loadPositions = useCallback(async () => {
+    setPositionsLoading(true)
+    try {
+      const j = await getJson<PositionsResponse>('/api/desk/positions')
+      setPositions(j)
+      setPositionsError(null)
+    } catch {
+      setPositionsError('ספר-העמדות אינו זמין כרגע — fail-closed.')
+    } finally {
+      setPositionsLoading(false)
+    }
+  }, [])
+
+  async function deskAction(body: Record<string, unknown>) {
+    setPositionsBusy(true)
+    setPositionsMsg(null)
+    try {
+      const res = await fetch('/api/desk/positions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      })
+      const j = (await res.json()) as { ok: boolean; message?: string }
+      if (!res.ok || !j.ok) {
+        setPositionsMsg(j.message ?? `הפעולה נכשלה (HTTP ${res.status}).`)
+      } else {
+        setPositionsMsg(body.action === 'open' ? 'עמדת-נייר נפתחה במחיר-חי.' : 'העמדה נסגרה במחיר-חי.')
+        await loadPositions()
+      }
+    } catch {
+      setPositionsMsg('הפעולה נכשלה — השירות אינו זמין כרגע.')
+    } finally {
+      setPositionsBusy(false)
+    }
+  }
+
+  async function runBacktest() {
+    setBtLoading(true)
+    setBtError(null)
+    try {
+      const j = await getJson<BacktestResponse>(`/api/desk/backtest?symbol=${encodeURIComponent(symbol)}&range=${btRange}`)
+      setBt(j)
+      if (!j.ok) setBtError(j.message ?? 'המנוע סירב — כנה.')
+    } catch {
+      setBtError('מפעל-הבקטסט אינו זמין כרגע — fail-closed.')
+    } finally {
+      setBtLoading(false)
+    }
+  }
 
   const refresh = useCallback(async () => {
     const [st, hist] = await Promise.all([
@@ -435,10 +498,11 @@ export default function DeskPage() {
       }
     })()
     loadFeeds()
+    loadPositions()
     return () => {
       alive = false
     }
-  }, [refresh, loadFeeds])
+  }, [refresh, loadFeeds, loadPositions])
 
   async function runSession() {
     setRunning(true)
@@ -791,6 +855,326 @@ export default function DeskPage() {
           ) : null}
         </section>
 
+        {/* ---- b3. Position engine room (R346) — the paper book with hard stops ---- */}
+        <section aria-label="מנוע-העמדות" className="space-y-3">
+          <div className="flex flex-wrap items-center gap-2 text-sm text-neutral-400">
+            <Briefcase className="h-4 w-4 text-emerald-500" aria-hidden />
+            <span>
+              מנוע-העמדות (נייר) <Num v="R346" className="text-emerald-400" />
+            </span>
+            <span className="text-neutral-600">· עוצרים קשיחים 2×ATR · RR 1:2 · טיים-סטופ 10 ימים · אפס-הצצה-קדימה</span>
+            <span className="flex-1" />
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={loadPositions}
+              disabled={positionsLoading}
+              className="border-neutral-800 bg-neutral-950 text-neutral-300 hover:bg-neutral-900 hover:text-neutral-100"
+            >
+              {positionsLoading ? (
+                <Loader2 className="ml-1 h-3.5 w-3.5 animate-spin" aria-hidden />
+              ) : (
+                <RefreshCw className="ml-1 h-3.5 w-3.5" aria-hidden />
+              )}
+              סמן מחירים
+            </Button>
+          </div>
+
+          {positionsLoading && !positions ? (
+            <Skeleton className="h-64 bg-neutral-900" />
+          ) : positionsError ? (
+            <p role="alert" className="rounded-md border border-rose-500/40 bg-rose-500/10 px-3 py-2 text-sm text-rose-300">
+              {positionsError}
+            </p>
+          ) : positions ? (
+            <Card>
+              <CardContent className="space-y-3 p-4">
+                {/* portfolio strip */}
+                <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-neutral-400">
+                  <span>
+                    פתוחות <Num v={positions.portfolio.openCount} />
+                  </span>
+                  <span>
+                    חשיפה גולמית <Num v={`${positions.portfolio.grossExposurePct}%`} />
+                  </span>
+                  <span>
+                    נטו <Num v={`${positions.portfolio.netExposurePct}%`} />
+                  </span>
+                  <span>
+                    לא-ממומש{' '}
+                    <span className={pnlClass(positions.portfolio.unrealizedPct)}>{pctStr(positions.portfolio.unrealizedPct)}</span>
+                  </span>
+                  <span>
+                    ממומש{' '}
+                    <span className={pnlClass(positions.portfolio.realizedPct)}>{pctStr(positions.portfolio.realizedPct)}</span>
+                  </span>
+                  <span>
+                    VaR{' '}
+                    <Num
+                      v={positions.var.ok && positions.var.varPct != null ? `(${Math.round((positions.var.confidence ?? 0.95) * 100)}%) ${positions.var.varPct}%` : '—'}
+                      className="text-amber-400"
+                    />
+                    {!positions.var.ok && positions.var.reason && (
+                      <span className="text-neutral-600"> ({positions.var.reason})</span>
+                    )}
+                  </span>
+                </div>
+
+                {/* open actions for the selected symbol — guarded by the live artery */}
+                {(() => {
+                  const sym = feeds?.symbols.find((s) => s.symbol === symbol)
+                  const blocked = !sym || sym.verdict !== 'ALIVE'
+                  return (
+                    <div className="flex flex-wrap items-center gap-2 border-t border-neutral-800 pt-3">
+                      <span className="text-xs text-neutral-500">
+                        פתיחה עבור <Num v={symbol} className="text-neutral-300" />:
+                      </span>
+                      <Button
+                        size="sm"
+                        disabled={positionsBusy || blocked || loading}
+                        onClick={() => deskAction({ action: 'open', symbol, side: 'buy' })}
+                        className="bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-50"
+                      >
+                        {positionsBusy ? <Loader2 className="ml-1 h-3.5 w-3.5 animate-spin" aria-hidden /> : null}
+                        פתח לונג
+                      </Button>
+                      <Button
+                        size="sm"
+                        disabled={positionsBusy || blocked || loading}
+                        onClick={() => deskAction({ action: 'open', symbol, side: 'sell' })}
+                        className="bg-rose-700 text-white hover:bg-rose-600 disabled:opacity-50"
+                      >
+                        פתח שורט
+                      </Button>
+                      {blocked && (
+                        <span className="text-[11px] text-amber-400">
+                          {feeds ? `חסום ע\"י-העורק: ${sym?.reason ?? 'סמל לא-חי'} — fail-closed` : 'העורק עוד לא נמדד'}
+                        </span>
+                      )}
+                    </div>
+                  )
+                })()}
+
+                {positionsMsg && (
+                  <p role="status" className="text-xs text-emerald-300">
+                    {positionsMsg}
+                  </p>
+                )}
+
+                {/* the book */}
+                <div className="desk-scroll max-h-80 overflow-y-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow className="border-neutral-800">
+                        <TableHead className="text-neutral-400">סמל</TableHead>
+                        <TableHead className="text-neutral-400">צד</TableHead>
+                        <TableHead className="text-left text-neutral-400">כניסה</TableHead>
+                        <TableHead className="text-left text-neutral-400">עוצר / יעד</TableHead>
+                        <TableHead className="text-left text-neutral-400">סימון</TableHead>
+                        <TableHead className="text-left text-neutral-400">P&amp;L</TableHead>
+                        <TableHead className="text-neutral-400">מצב</TableHead>
+                        <TableHead className="text-neutral-400">פעולה</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {positions.positions.length === 0 ? (
+                        <TableRow>
+                          <TableCell colSpan={8} className="text-center text-xs text-neutral-500">
+                            הספר ריק — בחר סמל חי ופתח עמדת-נייר.
+                          </TableCell>
+                        </TableRow>
+                      ) : (
+                        positions.positions.map((p) => {
+                          const pnl = p.status === 'OPEN' ? p.unrealizedPct : (p.realizedPct ?? 0)
+                          return (
+                            <TableRow key={p.id} className="border-neutral-800/60">
+                              <TableCell className="font-mono text-xs text-neutral-200">
+                                {p.symbol}
+                                <span className="mr-1 text-[10px] text-neutral-500"> {p.sizePct}%</span>
+                              </TableCell>
+                              <TableCell>
+                                <Badge
+                                  variant="outline"
+                                  className={`px-1.5 py-0 text-[10px] ${
+                                    p.side === 'buy'
+                                      ? 'border-emerald-500/40 bg-emerald-500/10 text-emerald-400'
+                                      : 'border-rose-500/40 bg-rose-500/10 text-rose-400'
+                                  }`}
+                                >
+                                  {p.side === 'buy' ? 'לונג' : 'שורט'}
+                                </Badge>
+                              </TableCell>
+                              <TableCell className="text-left font-mono text-xs text-neutral-300">
+                                {p.entryPrice.toLocaleString('en-US')}
+                              </TableCell>
+                              <TableCell className="text-left font-mono text-[11px] text-neutral-500">
+                                {p.stopPrice.toLocaleString('en-US')} / {p.targetPrice.toLocaleString('en-US')}
+                              </TableCell>
+                              <TableCell className="text-left font-mono text-xs text-neutral-300">
+                                {p.status === 'OPEN' ? p.lastMark.toLocaleString('en-US') : (p.exitPrice ?? p.lastMark).toLocaleString('en-US')}
+                              </TableCell>
+                              <TableCell className={`text-left font-mono text-xs ${pnlClass(pnl)}`}>
+                                {pctStr(pnl)}
+                                {p.status === 'CLOSED' && p.closeReason && (
+                                  <span className="mr-1 text-[10px] text-neutral-500"> {p.closeReason}</span>
+                                )}
+                              </TableCell>
+                              <TableCell>
+                                <Badge
+                                  variant="outline"
+                                  className={`px-1.5 py-0 text-[10px] ${
+                                    p.status === 'OPEN'
+                                      ? 'border-emerald-500/40 bg-emerald-500/10 text-emerald-400'
+                                      : 'border-neutral-600 text-neutral-400'
+                                  }`}
+                                >
+                                  {p.status === 'OPEN' ? 'פתוחה' : 'סגורה'}
+                                </Badge>
+                              </TableCell>
+                              <TableCell>
+                                {p.status === 'OPEN' ? (
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    disabled={positionsBusy}
+                                    onClick={() => deskAction({ action: 'close', id: p.id })}
+                                    className="h-7 border-neutral-800 bg-neutral-950 px-2 text-[11px] text-neutral-300 hover:bg-neutral-900"
+                                  >
+                                    סגור
+                                  </Button>
+                                ) : (
+                                  <span className="text-[11px] text-neutral-600">—</span>
+                                )}
+                              </TableCell>
+                            </TableRow>
+                          )
+                        })
+                      )}
+                    </TableBody>
+                  </Table>
+                </div>
+              </CardContent>
+            </Card>
+          ) : null}
+        </section>
+
+        {/* ---- b4. Backtest factory (R346) — real bars, lookahead-free ---- */}
+        <section aria-label="מפעל-הבקטסט" className="space-y-3">
+          <div className="flex flex-wrap items-center gap-2 text-sm text-neutral-400">
+            <FlaskConical className="h-4 w-4 text-amber-500" aria-hidden />
+            <span>
+              מפעל-הבקטסט — נתונים חיים <Num v="R346" className="text-amber-400" />
+            </span>
+            <span className="text-neutral-600">· אות@close(i) → מימוש@open(i+1) · אותו-מנוע-עוצרים כמו-השולחן</span>
+            <span className="flex-1" />
+            <div className="flex items-center gap-1">
+              {(['3mo', '6mo', '1y'] as const).map((r) => (
+                <Button
+                  key={r}
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setBtRange(r)}
+                  className={`h-7 border-neutral-800 px-2 font-mono text-[11px] ${
+                    btRange === r ? 'bg-neutral-800 text-neutral-100' : 'bg-neutral-950 text-neutral-400 hover:bg-neutral-900'
+                  }`}
+                >
+                  {r}
+                </Button>
+              ))}
+              <Button
+                size="sm"
+                onClick={runBacktest}
+                disabled={btLoading || loading}
+                className="bg-amber-600 text-white hover:bg-amber-700 disabled:opacity-50"
+              >
+                {btLoading ? <Loader2 className="ml-1 h-3.5 w-3.5 animate-spin" aria-hidden /> : null}
+                הרץ על <Num v={symbol} />
+              </Button>
+            </div>
+          </div>
+
+          {btError && (
+            <p role="alert" className="rounded-md border border-rose-500/40 bg-rose-500/10 px-3 py-2 text-sm text-rose-300">
+              {btError}
+            </p>
+          )}
+
+          {bt?.ok && bt.stats ? (
+            <Card>
+              <CardContent className="space-y-3 p-4">
+                <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-7">
+                  {[
+                    { l: 'עסקאות', v: String(bt.stats.tradeCount) },
+                    { l: 'אחוז-הצלחה', v: bt.stats.hitRate != null ? `${Math.round(bt.stats.hitRate * 100)}%` : '—' },
+                    { l: 'Sharpe', v: bt.stats.sharpe != null ? String(bt.stats.sharpe) : '—' },
+                    { l: 'תשואה', v: pctStr(bt.stats.totalReturnPct), cls: pnlClass(bt.stats.totalReturnPct) },
+                    { l: 'מקס-ירידה', v: `${bt.stats.maxDrawdownPct}%` },
+                    { l: 'רווח-ממוצע', v: bt.stats.avgWinPct != null ? pctStr(bt.stats.avgWinPct) : '—' },
+                    { l: 'נרות אמיתיים', v: String(bt.bars ?? '—') },
+                  ].map((m) => (
+                    <div key={m.l} className="rounded-lg border border-neutral-800 bg-neutral-950 p-3">
+                      <p className="text-[10px] text-neutral-500">{m.l}</p>
+                      <p className={`font-mono text-sm ${m.cls ?? 'text-neutral-200'}`}>{m.v}</p>
+                    </div>
+                  ))}
+                </div>
+                {bt.equity && bt.equity.length > 1 ? (
+                  <div>
+                    <p className="mb-1 text-[11px] text-neutral-500">
+                      עקומת-הון מדומה על נרות אמיתיים (עסקאות × גודל 10%) — <Num v={`sig:${bt.sig ?? ''}`} />
+                    </p>
+                    <Sparkline closes={bt.equity} stroke="#34d399" label="עקומת-הון בקטסט" />
+                  </div>
+                ) : null}
+                <div className="desk-scroll max-h-64 overflow-y-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow className="border-neutral-800">
+                        <TableHead className="text-neutral-400">צד</TableHead>
+                        <TableHead className="text-left text-neutral-400">כניסה → יציאה</TableHead>
+                        <TableHead className="text-left text-neutral-400">תוצאה</TableHead>
+                        <TableHead className="text-neutral-400">סיבת-סגירה</TableHead>
+                        <TableHead className="text-neutral-400">אות</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {(bt.trades ?? []).map((t, i) => (
+                        <TableRow key={i} className="border-neutral-800/60">
+                          <TableCell>
+                            <Badge
+                              variant="outline"
+                              className={`px-1.5 py-0 text-[10px] ${
+                                t.side === 'buy'
+                                  ? 'border-emerald-500/40 bg-emerald-500/10 text-emerald-400'
+                                  : 'border-rose-500/40 bg-rose-500/10 text-rose-400'
+                              }`}
+                            >
+                              {t.side === 'buy' ? 'לונג' : 'שורט'}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="text-left font-mono text-[11px] text-neutral-300" dir="ltr">
+                            {t.entryPrice.toLocaleString('en-US')} → {t.exitPrice.toLocaleString('en-US')}
+                          </TableCell>
+                          <TableCell className={`text-left font-mono text-xs ${pnlClass(t.realizedPct)}`}>
+                            {pctStr(t.realizedPct)}
+                          </TableCell>
+                          <TableCell className="text-[11px] text-neutral-400">{t.closeReason}</TableCell>
+                          <TableCell className="text-[11px] text-neutral-500">{t.signal ?? '—'}</TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+                <p className="text-[11px] text-neutral-600">
+                  מדידה על היסטוריה אמיתית — לא הבטחת-תשואה. הכישלונות מוצגים כנה (חוק-הענקים).
+                </p>
+              </CardContent>
+            </Card>
+          ) : bt && !bt.ok ? null : (
+            <p className="text-xs text-neutral-600">בחר סמל והרץ — המנוע ייבחן על נרות-יום אמיתיים מהעורק.</p>
+          )}
+        </section>
+
         {/* ---- c. Cabinet row ---- */}
         <section aria-label="הקבינט">
           <div className="mb-3 flex items-center gap-2 text-sm text-neutral-400">
@@ -1119,7 +1503,7 @@ export default function DeskPage() {
           >
             github.com/roshpinacare-sys/saos-desk
           </a>{' '}
-          · R345 עורק-הנתונים: אפס מפתחות, סינון אפס-אמון, REFRAIN fail-closed · מדוד-מול-מוערך: נתוני-המנוע כאן = סימולציה מתויגת כנה, טבלת-העורק = מחירים חיים מדודים
+          · R345 עורק-הנתונים: אפס מפתחות, סינון אפס-אמון, REFRAIN fail-closed · R346 מנוע-עמדות: עוצרים קשיחים, בקטסט ללא-הצצה · מדוד-מול-מוערך: נתוני-המנוע כאן = סימולציה מתויגת כנה, טבלאות-העורק/העמדות/הבקטסט = נתונים חיים מדודים
         </div>
       </footer>
     </div>

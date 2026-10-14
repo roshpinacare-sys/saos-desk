@@ -79,15 +79,105 @@ export interface Mandate {
   execution: { mode: "paper" | "live"; liveOwnerArmed: boolean };
   limits: MandateLimits;
   quorum: MandateQuorum;
+  positions: MandatePositions;
   universe: { tase: string[]; global: string[] };
   hebrewFeeds: { name: string; url: string }[];
   ingest: MandateIngest;
+}
+
+export interface MandatePositions {
+  schema: string;
+  paperOnly: boolean;
+  stopAtrMult: number;
+  rrTarget: number;
+  timeStopBars: number;
+  maxOpenPositions: number;
+  maxGrossExposurePct: number;
+  varConfidence: number;
+  varLookbackBars: number;
+  cooldownBars: number;
+  tieLaw: string;
 }
 
 export interface AgentWeightEntry {
   weight: number;
   wins: number;
   losses: number;
+}
+
+/** GET /api/desk/positions response (R346 paper book) — the engine room. */
+export interface PositionsResponse {
+  ok: boolean;
+  positions: DeskPositionRow[];
+  portfolio: {
+    openCount: number;
+    closedCount: number;
+    grossExposurePct: number;
+    netExposurePct: number;
+    unrealizedPct: number;
+    realizedPct: number;
+    hitRate: number | null;
+    drawdownPct: number;
+  };
+  var: { ok: boolean; reason?: string; varPct?: number | null; confidence?: number; samples?: number };
+  marks: { symbol: string; ok: boolean; last: number | null; reason: string | null }[];
+  paperOnly: boolean;
+}
+
+export interface DeskPositionRow {
+  id: string;
+  symbol: string;
+  side: "buy" | "sell";
+  sizePct: number;
+  status: string;
+  entryPrice: number;
+  stopPrice: number;
+  targetPrice: number;
+  riskPerUnit: number;
+  atrAtEntry: number;
+  barsHeld: number;
+  lastMarkT: number;
+  lastMark: number;
+  unrealizedPct: number;
+  exitPrice?: number | null;
+  realizedPct?: number | null;
+  closeReason?: string | null;
+  openedAt: string;
+  closedAt?: string | null;
+  events?: { type: string; at: string | null; price: number }[];
+}
+
+/** GET /api/desk/backtest response (R346) — real bars, lookahead-free engine. */
+export interface BacktestResponse {
+  ok: boolean;
+  symbol: string;
+  range: string;
+  bars?: number;
+  stats?: {
+    tradeCount: number;
+    hitRate: number | null;
+    avgWinPct: number | null;
+    avgLossPct: number | null;
+    profitFactor: number | null;
+    totalReturnPct: number;
+    sharpe: number | null;
+    maxDrawdownPct: number;
+    entryRule: string;
+    exitRule: string;
+  };
+  equity?: number[];
+  trades?: {
+    side: string;
+    entryPrice: number;
+    exitPrice: number;
+    realizedPct: number;
+    closeReason: string;
+    barsHeld: number;
+    signal: string | null;
+  }[];
+  sig?: string;
+  cached?: boolean;
+  message?: string;
 }
 
 /** GET /api/desk/feeds response (R345 live artery) — mirrors the sealed feed-state shape. */

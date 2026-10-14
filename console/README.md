@@ -5,7 +5,8 @@
 
 מיפוי:
 - `page.tsx` / `layout.tsx` / `globals.css` ← `src/app/`
-- `types.ts` `mandate.ts` `engine.ts` `ingest.ts` ← `src/lib/desk/`
+- `types.ts` `mandate.ts` `engine.ts` `ingest.ts` `positions.ts` `backtest.ts` `fetchers.ts` ← `src/lib/desk/`
+- `api/desk/positions` · `api/desk/backtest` (R346 מנוע-העמדות) · `prisma-schema.prisma` (DeskPosition)
 - `api/desk/<route>/route.ts` ← `src/app/api/desk/<route>/`
 
 מקור-האמת של המנוע נשאר `src/*.mjs` בריפו זה; הפורט-TS אומת bit-identical (ראה DECISIONS #30 ב-Pulse).

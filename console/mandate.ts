@@ -4,7 +4,7 @@
 import type { AgentId, Mandate } from "./types";
 
 export const MANDATE: Mandate = {
-  schema: "saos-desk/mandate@2",
+  schema: "saos-desk/mandate@3",
   execution: {
     mode: "paper",
     liveOwnerArmed: false,
@@ -20,6 +20,19 @@ export const MANDATE: Mandate = {
     minConfidence: 0.55,
     minWeightedScore: 0.35,
     rounds: 3,
+  },
+  positions: {
+    schema: "saos-desk/positions@1",
+    paperOnly: true,
+    stopAtrMult: 2,
+    rrTarget: 2,
+    timeStopBars: 10,
+    maxOpenPositions: 5,
+    maxGrossExposurePct: 50,
+    varConfidence: 0.95,
+    varLookbackBars: 60,
+    cooldownBars: 3,
+    tieLaw: "stop-wins",
   },
   universe: {
     tase: ["LEUMI.TA", "FIBI.TA", "POLI.TA", "NICE.TA", "TEVA.TA", "ICL.TA", "ESLT.TA", "BEZQ.TA", "MZTF.TA", "DSEA.TA"],
