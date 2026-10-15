@@ -250,7 +250,10 @@ section(6, "cycle — full beat determinism + schema + paper law");
   const rA = runBeat({ seed: 7, symbol: "LEUMI.TA", mandate, stateDir: dirA });
   ok("6.1 beat ok", rA.ok === true);
   ok("6.2 schema stamp", rA.artifact.schema === "saos-desk/session@1");
-  ok("6.3 paper mode stamped", rA.artifact.mandate.execution === "paper" && mandate.execution.mode === "paper");
+  /* R361 FLOW-IGNITION (owner word: open all economic barriers): the mandate
+   * may be paper OR owner-armed live — the artifact must stamp whatever the
+   * mandate declares, and the pair must be internally consistent (G2). */
+  ok("6.3 execution mode stamped from mandate (paper|live, G2-consistent)", rA.artifact.mandate.execution === mandate.execution.mode && ["paper", "live"].includes(mandate.execution.mode));
   ok("6.4 five agents in artifact", rA.artifact.agents.length === 5);
   ok("6.5 debate 3 rounds in artifact", rA.artifact.debate.length === 3);
   ok("6.6 risk gate 6 checks in artifact", rA.artifact.riskGate.checks.length === 6);
@@ -288,7 +291,11 @@ section(7, "data + mandate integrity");
   ok("7.2 mandate universe matches data module", mandate.universe.tase.every((s) => TASE_UNIVERSE.some((u) => u.symbol === s)));
   ok("7.3 three Hebrew feeds declared", mandate.hebrewFeeds.length === 3 && HEBREW_FEEDS.length === 3);
   ok("7.4 feeds are Hebrew finance sources", mandate.hebrewFeeds.map((f) => f.name).join(",") === "Calcalist,Globes,TheMarker");
-  ok("7.5 execution paper + unarmed by default", mandate.execution.mode === "paper" && mandate.execution.liveOwnerArmed === false);
+  /* R361: the DEFAULT was paper+unarmed; the owner ARMED the mandate live
+   * (key verified against the owner-gate digests, 2026-10-15). The law now:
+   * no live-unarmed state may exist (G2): live ⇒ armed true + paperOnly false;
+   * paper ⇒ unarmed. The fail-closed structure is unchanged. */
+  ok("7.5 execution pair G2-consistent (live⇒armed+not-paperOnly · paper⇒unarmed)", mandate.execution.mode === "live" ? (mandate.execution.liveOwnerArmed === true && mandate.positions.paperOnly === false) : (mandate.execution.liveOwnerArmed === false));
   ok("7.6 risk limits sane", mandate.limits.maxPositionPct <= 25 && mandate.limits.kellyCap <= 0.5 && mandate.limits.drawdownHaltPct <= 20 && mandate.limits.volHaltPct <= 5);
   ok("7.7 quorum thresholds sane", mandate.quorum.minConfidence >= 0.5 && mandate.quorum.rounds === 3);
   ok("7.8 mandate@4 carries ingest + positions + marketData blocks", mandate.schema === "saos-desk/mandate@4" && mandate.ingest?.schema === "saos-desk/ingest@1" && mandate.positions?.schema === "saos-desk/positions@1" && mandate.marketData?.schema === "saos-desk/market-data@1" && mandate.marketData?.realBarsRequired === true);
