@@ -1,8 +1,8 @@
 {
   "schema": "saos-desk/mandate@4",
   "execution": {
-    "mode": "paper",
-    "liveOwnerArmed": false
+    "mode": "live",
+    "liveOwnerArmed": true
   },
   "limits": {
     "maxPositionPct": 15,
@@ -18,7 +18,7 @@
   },
   "positions": {
     "schema": "saos-desk/positions@1",
-    "paperOnly": true,
+    "paperOnly": false,
     "stopAtrMult": 2,
     "rrTarget": 2,
     "timeStopBars": 10,
@@ -30,8 +30,23 @@
     "tieLaw": "stop-wins"
   },
   "universe": {
-    "tase": ["LEUMI.TA", "FIBI.TA", "POLI.TA", "NICE.TA", "TEVA.TA", "ICL.TA", "ESLT.TA", "BEZQ.TA", "MZTF.TA", "DSEA.TA"],
-    "global": ["SPY", "QQQ", "BTC-USD"]
+    "tase": [
+      "LEUMI.TA",
+      "FIBI.TA",
+      "POLI.TA",
+      "NICE.TA",
+      "TEVA.TA",
+      "ICL.TA",
+      "ESLT.TA",
+      "BEZQ.TA",
+      "MZTF.TA",
+      "DSEA.TA"
+    ],
+    "global": [
+      "SPY",
+      "QQQ",
+      "BTC-USD"
+    ]
   },
   "marketData": {
     "schema": "saos-desk/market-data@1",
@@ -57,13 +72,28 @@
       "https://query2.finance.yahoo.com"
     ],
     "hebrewNews": [
-      { "name": "GoogleNews-Hebrew", "url": "https://news.google.com/rss/search?q=%D7%9E%D7%A0%D7%99%D7%95%D7%AA%20%D7%AA%D7%9C%20%D7%90%D7%91%D7%99%D7%91%20OR%20%D7%91%D7%95%D7%A8%D7%A1%D7%94&hl=he&gl=IL&ceid=IL:he" },
-      { "name": "Ynet-Finance", "url": "https://www.ynet.co.il/Integration/StoryRss1854.xml" }
+      {
+        "name": "GoogleNews-Hebrew",
+        "url": "https://news.google.com/rss/search?q=%D7%9E%D7%A0%D7%99%D7%95%D7%AA%20%D7%AA%D7%9C%20%D7%90%D7%91%D7%99%D7%91%20OR%20%D7%91%D7%95%D7%A8%D7%A1%D7%94&hl=he&gl=IL&ceid=IL:he"
+      },
+      {
+        "name": "Ynet-Finance",
+        "url": "https://www.ynet.co.il/Integration/StoryRss1854.xml"
+      }
     ]
   },
   "hebrewFeeds": [
-    { "name": "Calcalist", "url": "https://www.calcalist.co.il/AllNews.xml" },
-    { "name": "Globes", "url": "https://www.globes.co.il/webservice/rss/rss_feeds_rss20.xml?fid=1042" },
-    { "name": "TheMarker", "url": "https://www.themarker.com/cserver/rss/allnews" }
+    {
+      "name": "Calcalist",
+      "url": "https://www.calcalist.co.il/AllNews.xml"
+    },
+    {
+      "name": "Globes",
+      "url": "https://www.globes.co.il/webservice/rss/rss_feeds_rss20.xml?fid=1042"
+    },
+    {
+      "name": "TheMarker",
+      "url": "https://www.themarker.com/cserver/rss/allnews"
+    }
   ]
 }

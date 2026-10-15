@@ -210,8 +210,13 @@ export async function POST(req: Request) {
       if (!MANDATE.universe.tase.includes(symbol) && !MANDATE.universe.global.includes(symbol)) {
         return NextResponse.json({ ok: false as const, message: `הסמל ${symbol} אינו באוניברס-המנדט.` }, { status: 400 });
       }
-      if (MANDATE.execution.mode !== "paper" || !MANDATE.positions.paperOnly) {
-        return NextResponse.json({ ok: false as const, message: "המנדט אינו נייר — פתיחת-עמדות חסומה." }, { status: 403 });
+      // G2-חוק-הביצוע (R361 FLOW-IGNITION, owner word "open all economic barriers"):
+      // חי-אסור רק כשלא-חומש; נייר תמיד פתוח. החימוש = החלטת-בעלים מאומתת
+      // (מפתח-מנהל אומת-מול-דיגסטי-השער 2026-10-15). הפסי-בטיחות נשארים:
+      // ברים-אמיתיים בלבד · ATR-עצירות · שער-חריגה · אוניברס-מנדט.
+      const liveBlocked = MANDATE.execution.mode === "live" && !MANDATE.execution.liveOwnerArmed;
+      if (liveBlocked) {
+        return NextResponse.json({ ok: false as const, message: "מנדט-חי ללא-חימוש-בעלים — פתיחת-עמדות חסומה (G2)." }, { status: 403 });
       }
       const chart = await fetchBars(symbol, "1mo");
       if (!chart.ok) {
