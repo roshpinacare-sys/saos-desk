@@ -1,5 +1,5 @@
 {
   "ok": false,
   "error": "SNAPSHOT-FAILED",
-  "reason": "bar-127-ohlc-inconsistent"
+  "reason": "bar-126-ohlc-inconsistent"
 }
