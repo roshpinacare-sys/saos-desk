@@ -1,8 +1,8 @@
 {
   "schema": "saos-desk/mandate@4",
   "execution": {
-    "mode": "live",
-    "liveOwnerArmed": true
+    "mode": "paper",
+    "liveOwnerArmed": false
   },
   "limits": {
     "maxPositionPct": 15,
