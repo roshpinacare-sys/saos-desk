@@ -1,20 +1,6 @@
 {
-  "sig": "7ced2ba3",
-  "beat": 392,
+  "ok": false,
+  "error": "NO-REAL-BARS",
   "symbol": "ICL.TA",
-  "dataMode": "live-bars",
-  "price": 1540,
-  "decision": "flat",
-  "sizePct": 0,
-  "outcome": {
-    "realizedPct": 0,
-    "simClosed": false,
-    "pending": false,
-    "outcomeSource": "measured-next-bar"
-  },
-  "feed": {
-    "verdict": "REFRAIN",
-    "refrain": true,
-    "reason": "עורק-חי: 11/13 סמלים חיים, 2/5 פידי-חדשות חיים · נתונים מזדקנים (7386דק > 90דק) — REFRAIN"
-  }
+  "reason": "bars:120-below-min:121"
 }
