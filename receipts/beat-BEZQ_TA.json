@@ -1,6 +1,20 @@
 {
-  "ok": false,
-  "error": "NO-REAL-BARS",
+  "sig": "25ad9a86",
+  "beat": 414,
   "symbol": "BEZQ.TA",
-  "reason": "bars:120-below-min:121"
+  "dataMode": "live-bars",
+  "price": 720.6,
+  "decision": "flat",
+  "sizePct": 0,
+  "outcome": {
+    "realizedPct": 0,
+    "simClosed": false,
+    "pending": false,
+    "outcomeSource": "measured-next-bar"
+  },
+  "feed": {
+    "verdict": "REFRAIN",
+    "refrain": true,
+    "reason": "עורק-חי: 11/13 סמלים חיים, 2/5 פידי-חדשות חיים · נתונים מזדקנים (8074דק > 90דק) — REFRAIN"
+  }
 }
