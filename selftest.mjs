@@ -10,6 +10,7 @@ import { loadState, appendLedger, verifyLedger, resumeCheck } from "./src/checkp
 import { runBeat, seedWeights } from "./src/cycle.mjs";
 import { TASE_UNIVERSE, HEBREW_FEEDS } from "./src/data.mjs";
 import { LEDGER_SCHEMA, LEDGER_KINDS, genesisDeposit, positionToLock, positionToSettle, verifyLedgerChain, eventToLedgerRecords } from "./src/ledger.mjs";
+import { CABINET_SCHEMA, DEX_TRADE_OPS, CABINET_BASE_CAPITAL_MU, cabinetLimitsFromMandate, dexPreTradeCabinet, cabinetReceipt, verifyCabinetChain } from "./src/cabinet.mjs";
 
 let pass = 0, fail = 0;
 const fails = [];
@@ -623,6 +624,69 @@ section(9, "positions + backtest — lifecycle, hard stops, VaR, lookahead-free 
     const simBeat = runBeat({ seed: 555, symbol: "SPY", klass: "global", mandate, stateDir: st5, wallClock: null });
     ok("11.14 sim fixture path unchanged", simBeat.ok && simBeat.artifact.dataMode === "sim" && simBeat.artifact.market.source === "sim" && simBeat.artifact.outcome.simClosed === true);
   }
+
+// ─────────────────────────────────────────────────────────────────────────────
+section(12, "cabinet — dex pre-trade risk gates (directive §7C, trace 1a1693b4c50c0941)");
+{
+  const op = (over = {}) => ({ type: "order", issuer: "desk-agent", nonce: "n-1", base: "WSTEEM", quote: "USDS", side: "buy", price: 5_400_000, amount: 200, ...over });
+
+  // 12.1 derivation determinism + mandate binding (law 3: the mandate is hard law)
+  const L1 = cabinetLimitsFromMandate(mandate);
+  const L2 = cabinetLimitsFromMandate(clone(mandate));
+  ok("12.1a limits deterministic", JSON.stringify(L1) === JSON.stringify(L2));
+  ok("12.1b mandateSig 8hex", /^[0-9a-f]{8}$/.test(L1.mandateSig));
+  ok("12.1c schema tagged", L1.schema === CABINET_SCHEMA);
+
+  // 12.2 honest derivation from mandate.limits.maxPositionPct over BASE_CAPITAL_MU
+  ok("12.2a maxNotionalMu = 15% of base", L1.maxNotionalMu === Math.floor(CABINET_BASE_CAPITAL_MU * mandate.limits.maxPositionPct / 100));
+  const m15 = clone(mandate); m15.limits.maxPositionPct = 40;
+  ok("12.2b mandate change moves the cap (no hardcode)", cabinetLimitsFromMandate(m15).maxNotionalMu !== L1.maxNotionalMu);
+  ok("12.2c in-flight cap = maxOpenPositions", L1.maxTradesPerIssuerInFlight === mandate.positions.maxOpenPositions);
+  ok("12.2d paper law out of scope (execution fields ignored)", (() => { const m = clone(mandate); m.execution.mode = "live"; m.execution.liveOwnerArmed = true; return cabinetLimitsFromMandate(m).mandateSig === L1.mandateSig; })());
+
+  // 12.3 C1 units-law (law 13: integers only cross the signature)
+  ok("12.3a float amount denied", dexPreTradeCabinet(op({ amount: 200.5 }), L1).allowed === false && dexPreTradeCabinet(op({ amount: 200.5 }), L1).fails.includes("C1"));
+  ok("12.3b NaN price denied", dexPreTradeCabinet(op({ price: NaN }), L1).fails.includes("C1"));
+  ok("12.3c negative amount denied", dexPreTradeCabinet(op({ amount: -5 }), L1).fails.includes("C1"));
+  ok("12.3d non-trade op out of scope", dexPreTradeCabinet({ type: "asset_price", issuer: "treasury", nonce: "n", asset: "WSTEEM", refPrice: 1 }, L1).allowed === true);
+  ok("12.3e unknown type in trade shape fails closed", dexPreTradeCabinet(op({ type: "nuclear_launch" }), L1).fails.includes("C1"));
+
+  // 12.4 C2 notional cap over capital index (dex mirror: floor(price×amount/1000))
+  const overCap = op({ price: 5_400_000, amount: Math.ceil((1_600_000 * 1000) / 5_400_000) }); // → notional 1_600_000µ > cap
+  ok("12.4a over-cap order denied", dexPreTradeCabinet(overCap, L1).fails.includes("C2"));
+  const atCap = op({ price: 1_000_000, amount: 1_500 }); // exactly 1_500_000µ = cap
+  ok("12.4b at-cap order passes", dexPreTradeCabinet(atCap, L1).allowed === true);
+
+  // 12.5 C3 per-issuer in-flight velocity
+  ok("12.5a in-flight at cap denied", dexPreTradeCabinet(op(), L1, { inFlight: L1.maxTradesPerIssuerInFlight }).fails.includes("C3"));
+  ok("12.5b in-flight below cap passes", dexPreTradeCabinet(op(), L1, { inFlight: L1.maxTradesPerIssuerInFlight - 1 }).allowed === true);
+
+  // 12.6 C4 slippage guard on pool_swap (SETTLE-9 defense-in-depth)
+  const swap = (over = {}) => ({ type: "pool_swap", issuer: "desk-agent", nonce: "n-2", pair: "WSTEEM-USDS", assetIn: "WSTEEM", amount: L1.minOutRequiredAboveMu + 1, ...over });
+  ok("12.6a large swap without minOut denied", dexPreTradeCabinet(swap(), L1).fails.includes("C4"));
+  ok("12.6b large swap with minOut passes", dexPreTradeCabinet(swap({ minOut: 1 }), L1).allowed === true);
+  ok("12.6c small swap without minOut passes", dexPreTradeCabinet({ type: "pool_swap", issuer: "desk-agent", nonce: "n-3", pair: "WSTEEM-USDS", assetIn: "WSTEEM", amount: L1.minOutRequiredAboveMu - 1 }, L1).allowed === true);
+  ok("12.6d zero minOut counts as absent", dexPreTradeCabinet(swap({ minOut: 0 }), L1).fails.includes("C4"));
+
+  // 12.7 verdict shape parity with boardroom riskGate (G1..G6 contract)
+  const v = dexPreTradeCabinet(op({ amount: NaN }), L1);
+  ok("12.7a verdicts carry id/label/passed/measured/limit", v.verdicts.length > 0 && v.verdicts.every((x) => typeof x.id === "string" && typeof x.label === "string" && typeof x.passed === "boolean" && "measured" in x && "limit" in x));
+  ok("12.7b fails = failed ids", v.fails.length > 0 && v.fails.every((id) => v.verdicts.find((x) => x.id === id && x.passed === false)));
+  ok("12.7c allowed iff no fails", v.allowed === (v.fails.length === 0));
+
+  // 12.8 receipt chain — append-only + tamper detection (law 5 discipline)
+  const r1 = cabinetReceipt(null, op(), dexPreTradeCabinet(op(), L1), { seq: 1, at: 1 });
+  const r2 = cabinetReceipt(r1, op(), dexPreTradeCabinet(op(), L1), { seq: 2, at: 2 });
+  const r3 = cabinetReceipt(r2, op(), dexPreTradeCabinet(op({ amount: NaN }), L1), { seq: 3, at: 3 });
+  ok("12.8a chain verifies clean", verifyCabinetChain([r1, r2, r3]).ok === true);
+  ok("12.8b receipt carries opDigest + allowed", /^[0-9a-f]{8}$/.test(r1.opDigest) && r3.allowed === false);
+  const tampered = JSON.parse(JSON.stringify([r1, r2, r3])); tampered[1].allowed = !tampered[1].allowed;
+  ok("12.8c tamper breaks chain at the row", verifyCabinetChain(tampered).ok === false && verifyCabinetChain(tampered).brokenAt === 1);
+  ok("12.8d genesis receipt has null prev", r1.prevHash === null && r2.prevHash === r1.hash);
+
+  // 12.9 v1 scope law — DEX_TRADE_OPS frozen
+  ok("12.9 trade ops scope frozen", JSON.stringify(DEX_TRADE_OPS) === JSON.stringify(["order", "fill", "pool_swap"]));
+}
 
 console.log(`\n${pass}/${pass + fail} PASS${fail > 0 ? " — FAILURES: " + fails.join(", ") : ""}`);
 process.exit(fail > 0 ? 1 : 0);
