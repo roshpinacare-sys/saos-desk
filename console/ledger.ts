@@ -167,9 +167,15 @@ async function mirrorToDex(record: LedgerRecord): Promise<string> {
   try {
     const ctl = new AbortController();
     const t = setTimeout(() => ctl.abort(), 5000);
+    // §1 (directive 1a173c6ac120ccb1): the dex anchor now authenticates the operator
+    // (x-saos-operator). The mirror is best-effort by law — a missing/unrefused token
+    // is reported honestly (REFUSED:...), it never blocks the local record.
+    const opToken = (process.env.DEX_OPERATOR_TOKEN ?? "").trim();
+    const headers: Record<string, string> = { "content-type": "application/json" };
+    if (opToken) headers["x-saos-operator"] = opToken;
     const res = await fetch("http://127.0.0.1:3010/saos-dex/api/dex/desk-ledger", {
       method: "POST",
-      headers: { "content-type": "application/json" },
+      headers,
       body: JSON.stringify({ record }),
       signal: ctl.signal,
     });
