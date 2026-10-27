@@ -1,9 +1,9 @@
 {
-  "sig": "93b81e55",
-  "beat": 1523,
+  "sig": "0c49493d",
+  "beat": 1534,
   "symbol": "QQQ",
   "dataMode": "live-bars",
-  "price": 718.36,
+  "price": 717.63,
   "decision": "flat",
   "sizePct": 0,
   "outcome": {
@@ -15,6 +15,6 @@
   "feed": {
     "verdict": "REFRAIN",
     "refrain": true,
-    "reason": "עורק-חי: 11/13 סמלים חיים, 2/5 פידי-חדשות חיים · נתונים מזדקנים (18434דק > 90דק) — REFRAIN"
+    "reason": "עורק-חי: 11/13 סמלים חיים, 2/5 פידי-חדשות חיים · נתונים מזדקנים (18574דק > 90דק) — REFRAIN"
   }
 }
