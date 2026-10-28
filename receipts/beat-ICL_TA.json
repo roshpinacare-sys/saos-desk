@@ -1,9 +1,9 @@
 {
-  "sig": "b1f65414",
-  "beat": 1637,
+  "sig": "823cef7e",
+  "beat": 1648,
   "symbol": "ICL.TA",
   "dataMode": "live-bars",
-  "price": 1484,
+  "price": 1465,
   "decision": "flat",
   "sizePct": 0,
   "outcome": {
@@ -15,6 +15,6 @@
   "feed": {
     "verdict": "REFRAIN",
     "refrain": true,
-    "reason": "עורק-חי: 11/13 סמלים חיים, 2/5 פידי-חדשות חיים · נתונים מזדקנים (19602דק > 90דק) — REFRAIN"
+    "reason": "עורק-חי: 11/13 סמלים חיים, 2/5 פידי-חדשות חיים · נתונים מזדקנים (19674דק > 90דק) — REFRAIN"
   }
 }
