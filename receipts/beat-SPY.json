@@ -1,5 +1,20 @@
 {
-  "ok": false,
-  "error": "SNAPSHOT-FAILED",
-  "reason": "bar-127-ohlc-inconsistent"
+  "sig": "46e66fee",
+  "beat": 1837,
+  "symbol": "SPY",
+  "dataMode": "live-bars",
+  "price": 763.96,
+  "decision": "flat",
+  "sizePct": 0,
+  "outcome": {
+    "realizedPct": 0,
+    "simClosed": false,
+    "pending": false,
+    "outcomeSource": "measured-next-bar"
+  },
+  "feed": {
+    "verdict": "REFRAIN",
+    "refrain": true,
+    "reason": "עורק-חי: 11/13 סמלים חיים, 2/5 פידי-חדשות חיים · נתונים מזדקנים (21517דק > 90דק) — REFRAIN"
+  }
 }
