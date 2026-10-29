@@ -1,6 +1,6 @@
 {
-  "sig": "a203dcbf",
-  "beat": 1858,
+  "sig": "cacc7cf0",
+  "beat": 1869,
   "symbol": "MZTF.TA",
   "dataMode": "live-bars",
   "price": 23190,
@@ -15,6 +15,6 @@
   "feed": {
     "verdict": "REFRAIN",
     "refrain": true,
-    "reason": "עורק-חי: 11/13 סמלים חיים, 2/5 פידי-חדשות חיים · נתונים מזדקנים (21766דק > 90דק) — REFRAIN"
+    "reason": "עורק-חי: 11/13 סמלים חיים, 2/5 פידי-חדשות חיים · נתונים מזדקנים (21873דק > 90דק) — REFRAIN"
   }
 }
