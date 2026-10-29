@@ -1,9 +1,9 @@
 {
-  "sig": "a658f620",
-  "beat": 1781,
+  "sig": "c97b9eea",
+  "beat": 1792,
   "symbol": "BEZQ.TA",
   "dataMode": "live-bars",
-  "price": 709.7,
+  "price": 710.3,
   "decision": "flat",
   "sizePct": 0,
   "outcome": {
@@ -15,6 +15,6 @@
   "feed": {
     "verdict": "REFRAIN",
     "refrain": true,
-    "reason": "עורק-חי: 11/13 סמלים חיים, 2/5 פידי-חדשות חיים · נתונים מזדקנים (20962דק > 90דק) — REFRAIN"
+    "reason": "עורק-חי: 11/13 סמלים חיים, 2/5 פידי-חדשות חיים · נתונים מזדקנים (21088דק > 90דק) — REFRAIN"
   }
 }

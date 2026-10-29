@@ -1,9 +1,9 @@
 {
-  "sig": "c612f0f1",
-  "beat": 1775,
+  "sig": "010cf03c",
+  "beat": 1786,
   "symbol": "FIBI.TA",
   "dataMode": "live-bars",
-  "price": 23570,
+  "price": 23300,
   "decision": "flat",
   "sizePct": 0,
   "outcome": {
@@ -15,6 +15,6 @@
   "feed": {
     "verdict": "REFRAIN",
     "refrain": true,
-    "reason": "עורק-חי: 11/13 סמלים חיים, 2/5 פידי-חדשות חיים · נתונים מזדקנים (20962דק > 90דק) — REFRAIN"
+    "reason": "עורק-חי: 11/13 סמלים חיים, 2/5 פידי-חדשות חיים · נתונים מזדקנים (21088דק > 90דק) — REFRAIN"
   }
 }
