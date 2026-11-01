@@ -1,6 +1,6 @@
 {
-  "sig": "34ebde93",
-  "beat": 2299,
+  "sig": "2df6bef8",
+  "beat": 2310,
   "symbol": "POLI.TA",
   "dataMode": "live-bars",
   "price": 7640,
@@ -15,6 +15,6 @@
   "feed": {
     "verdict": "REFRAIN",
     "refrain": true,
-    "reason": "עורק-חי: 11/13 סמלים חיים, 2/5 פידי-חדשות חיים · נתונים מזדקנים (25942דק > 90דק) — REFRAIN"
+    "reason": "עורק-חי: 11/13 סמלים חיים, 2/5 פידי-חדשות חיים · נתונים מזדקנים (26056דק > 90דק) — REFRAIN"
   }
 }
