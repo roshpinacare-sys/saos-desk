@@ -1,9 +1,9 @@
 {
-  "sig": "debf225d",
-  "beat": 2479,
+  "sig": "180c3c38",
+  "beat": 2490,
   "symbol": "SPY",
   "dataMode": "live-bars",
-  "price": 759.97,
+  "price": 765.37,
   "decision": "flat",
   "sizePct": 0,
   "outcome": {
@@ -15,6 +15,6 @@
   "feed": {
     "verdict": "REFRAIN",
     "refrain": true,
-    "reason": "עורק-חי: 11/13 סמלים חיים, 2/5 פידי-חדשות חיים · נתונים מזדקנים (27840דק > 90דק) — REFRAIN"
+    "reason": "עורק-חי: 11/13 סמלים חיים, 2/5 פידי-חדשות חיים · נתונים מזדקנים (27934דק > 90דק) — REFRAIN"
   }
 }
