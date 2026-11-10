@@ -1,6 +1,6 @@
 {
-  "sig": "f5ece7ca",
-  "beat": 3459,
+  "sig": "43ea522b",
+  "beat": 3470,
   "symbol": "ESLT.TA",
   "dataMode": "live-bars",
   "price": 213140,
@@ -15,6 +15,6 @@
   "feed": {
     "verdict": "REFRAIN",
     "refrain": true,
-    "reason": "עורק-חי: 11/13 סמלים חיים, 2/5 פידי-חדשות חיים · נתונים מזדקנים (38408דק > 90דק) — REFRAIN"
+    "reason": "עורק-חי: 11/13 סמלים חיים, 2/5 פידי-חדשות חיים · נתונים מזדקנים (38542דק > 90דק) — REFRAIN"
   }
 }
