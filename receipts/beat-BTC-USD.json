@@ -1,9 +1,9 @@
 {
-  "sig": "0bfe14b9",
-  "beat": 3693,
+  "sig": "eaecaf2f",
+  "beat": 3704,
   "symbol": "BTC-USD",
   "dataMode": "live-bars",
-  "price": 75746.9297,
+  "price": 75747.5781,
   "decision": "flat",
   "sizePct": 0,
   "outcome": {
@@ -15,6 +15,6 @@
   "feed": {
     "verdict": "REFRAIN",
     "refrain": true,
-    "reason": "עורק-חי: 11/13 סמלים חיים, 2/5 פידי-חדשות חיים · נתונים מזדקנים (41084דק > 90דק) — REFRAIN"
+    "reason": "עורק-חי: 11/13 סמלים חיים, 2/5 פידי-חדשות חיים · נתונים מזדקנים (41217דק > 90דק) — REFRAIN"
   }
 }
