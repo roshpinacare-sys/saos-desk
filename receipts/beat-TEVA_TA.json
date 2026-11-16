@@ -1,9 +1,9 @@
 {
-  "sig": "2c8be30e",
-  "beat": 4252,
+  "sig": "5838c2ba",
+  "beat": 4263,
   "symbol": "TEVA.TA",
   "dataMode": "live-bars",
-  "price": 13580,
+  "price": 13970,
   "decision": "flat",
   "sizePct": 0,
   "outcome": {
@@ -15,6 +15,6 @@
   "feed": {
     "verdict": "REFRAIN",
     "refrain": true,
-    "reason": "עורק-חי: 11/13 סמלים חיים, 2/5 פידי-חדשות חיים · נתונים מזדקנים (46931דק > 90דק) — REFRAIN"
+    "reason": "עורק-חי: 11/13 סמלים חיים, 2/5 פידי-חדשות חיים · נתונים מזדקנים (47131דק > 90דק) — REFRAIN"
   }
 }

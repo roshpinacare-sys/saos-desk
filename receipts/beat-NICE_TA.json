@@ -1,9 +1,9 @@
 {
-  "sig": "feed1837",
-  "beat": 4251,
+  "sig": "9f799390",
+  "beat": 4262,
   "symbol": "NICE.TA",
   "dataMode": "live-bars",
-  "price": 30550,
+  "price": 30390,
   "decision": "flat",
   "sizePct": 0,
   "outcome": {
@@ -15,6 +15,6 @@
   "feed": {
     "verdict": "REFRAIN",
     "refrain": true,
-    "reason": "עורק-חי: 11/13 סמלים חיים, 2/5 פידי-חדשות חיים · נתונים מזדקנים (46931דק > 90דק) — REFRAIN"
+    "reason": "עורק-חי: 11/13 סמלים חיים, 2/5 פידי-חדשות חיים · נתונים מזדקנים (47131דק > 90דק) — REFRAIN"
   }
 }
